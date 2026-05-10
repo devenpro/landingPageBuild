@@ -1,0 +1,49 @@
+# site/public/.htaccess — doc root for this site.
+#
+# core/, site/sections/, site/pages/, site/migrations/, data/, .env all
+# live OUTSIDE this directory (one or two levels up), so they are not
+# directly addressable. This file just enforces HTTPS, sets cache/security
+# headers, and is ready for Phase 4's front-controller routing.
+
+DirectoryIndex index.php
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Force HTTPS in production. Skip on localhost so XAMPP dev works on http.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP_HOST} !^localhost [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Front controller: route any non-existent file/dir to index.php.
+    # Phase 4's router uses REQUEST_URI to look up the page slug.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Belt-and-braces: deny sensitive file extensions in case any leak in
+<FilesMatch "^\.env|\.env\..*|\.gitignore|\.cpanel\.yml|\.git">
+    Require all denied
+</FilesMatch>
+<FilesMatch "\.(md|sql|db|db-journal|db-wal|db-shm)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css       "access plus 30 days"
+    ExpiresByType image/svg+xml  "access plus 30 days"
+    ExpiresByType image/png      "access plus 30 days"
+    ExpiresByType image/jpeg     "access plus 30 days"
+    ExpiresByType image/webp     "access plus 30 days"
+    ExpiresByType font/woff2     "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>

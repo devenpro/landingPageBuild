@@ -1,3 +1,4 @@
-# Defense in depth — if data/ ever ends up inside the webroot on a host that
-# doesn't allow files outside public_html/, this denies all access to the DB.
+# Belt-and-braces: data/ lives at repo root, OUTSIDE site/public/ which is
+# the doc root, so this file is purely defence-in-depth. If a misconfig
+# ever exposes data/, this denies all access.
 Require all denied

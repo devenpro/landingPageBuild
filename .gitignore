@@ -1,17 +1,21 @@
-# env / secrets
+# env / secrets — .env can live anywhere; the bare name matches at any depth.
 .env
 .env.local
 
-# database (data dir kept via .gitkeep, content excluded)
+# SQLite database — dir kept via .gitkeep, content excluded
 data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
 
-# uploads (dir kept via .gitkeep, user files excluded)
-public_html/uploads/*
-!public_html/uploads/.gitkeep
-!public_html/uploads/.htaccess
+# Per-site uploads — dir kept via .gitkeep, user files excluded
+site/public/uploads/*
+!site/public/uploads/.gitkeep
+!site/public/uploads/.htaccess
+
+# Claude Code workflow-mode marker (per-developer / per-session)
+.claude-mode
+.claude/settings.local.json
 
 # OS / editor
 Thumbs.db
@@ -22,8 +26,8 @@ desktop.ini
 *.swp
 *~
 
-# vendor (if Composer ever shows up — it shouldn't)
+# Vendor (if Composer ever shows up — it shouldn't)
 vendor/
 
-# logs
+# Logs
 *.log
