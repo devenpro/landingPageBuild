@@ -1,0 +1,40 @@
+/* assets/css/styles.css — minimal CSS that lives outside Tailwind:
+   self-hosted Inter @font-face, edit-mode hover styles (used by Phase 5),
+   and prefers-reduced-motion overrides. */
+
+@font-face {
+    font-family: 'InterVariable';
+    src: url('/assets/fonts/InterVariable.woff2') format('woff2-variations'),
+         url('/assets/fonts/InterVariable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { font-feature-settings: 'cv11', 'ss01', 'ss03'; }
+
+/* Edit-mode visual cues — only render when <body class="edit-mode">.
+   Phase 5 sets that class on the server when an admin session is active. */
+.edit-mode [data-edit] {
+    outline: 1.5px dashed transparent;
+    outline-offset: 4px;
+    border-radius: 4px;
+    transition: outline-color 120ms ease;
+    cursor: pointer;
+}
+.edit-mode [data-edit]:hover {
+    outline-color: #7c3aed;
+}
+.edit-mode [data-edit].is-editing {
+    outline-style: solid;
+    outline-color: #7c3aed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}
