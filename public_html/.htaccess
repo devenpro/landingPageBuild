@@ -1,10 +1,12 @@
-# Phase 1 .htaccess — minimal. Full security headers + clean URL rewrites
-# arrive in Phase 2 once we have actual routes.
+# Phase 2 .htaccess for the self-contained layout. Every private directory
+# (includes/, scripts/, migrations/, data/) lives inside the web root, so
+# this file is the primary line of defence. Each of those dirs also has
+# its own deny .htaccess as defence-in-depth.
 
-# Default doc
 DirectoryIndex index.php
+Options -Indexes
 
-# Force HTTPS in production only (skip on localhost so XAMPP dev works on http)
+# Force HTTPS in production. Skip on localhost so XAMPP dev works on http.
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteCond %{HTTPS} !=on
@@ -13,13 +15,33 @@ DirectoryIndex index.php
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
-# Block access to sensitive files if they ever land in the webroot
-<FilesMatch "^\.env|\.env\.example|\.gitignore|\.cpanel\.yml|\.git">
+# Deny private dirs (defence-in-depth — each also has its own .htaccess)
+RedirectMatch 404 ^/(includes|scripts|migrations|data)(/|$)
+
+# Deny sensitive files at any depth
+<FilesMatch "^\.env|\.env\..*|\.gitignore|\.cpanel\.yml|\.git">
     Require all denied
 </FilesMatch>
-<FilesMatch "\.(md|sql)$">
+<FilesMatch "\.(md|sql|db|db-journal|db-wal|db-shm)$">
     Require all denied
 </FilesMatch>
 
-# In case data/ or includes/ end up inside the webroot on a constrained host
-RedirectMatch 404 ^/(data|includes|migrations|scripts)(/|$)
+# Cache headers for static assets — long TTL is safe because filenames
+# either contain timestamps (uploaded media) or are versioned (Inter font
+# is content-addressed by name).
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# Basic security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>

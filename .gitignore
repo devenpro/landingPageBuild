@@ -1,14 +1,15 @@
-# env / secrets
+# env / secrets — .env can live at any depth (root in old layout,
+# public_html/ in current layout); the bare name matches anywhere.
 .env
 .env.local
 
-# database (data dir kept via .gitkeep, content excluded)
-data/*.db
-data/*.db-journal
-data/*.db-wal
-data/*.db-shm
+# SQLite database — dir kept via .gitkeep, content excluded
+public_html/data/*.db
+public_html/data/*.db-journal
+public_html/data/*.db-wal
+public_html/data/*.db-shm
 
-# uploads (dir kept via .gitkeep, user files excluded)
+# Uploads — dir kept via .gitkeep, user files excluded
 public_html/uploads/*
 !public_html/uploads/.gitkeep
 !public_html/uploads/.htaccess
@@ -22,8 +23,8 @@ desktop.ini
 *.swp
 *~
 
-# vendor (if Composer ever shows up — it shouldn't)
+# Vendor (if Composer ever shows up — it shouldn't)
 vendor/
 
-# logs
+# Logs
 *.log

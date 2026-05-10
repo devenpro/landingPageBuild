@@ -5,11 +5,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/helpers.php';
-require_once __DIR__ . '/../includes/content.php';
-require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/helpers.php';
+require_once __DIR__ . '/includes/content.php';
+require_once __DIR__ . '/includes/layout.php';
 
 layout_head();
 
@@ -27,7 +27,7 @@ $sections = [
 ];
 
 foreach ($sections as $name) {
-    require __DIR__ . '/../includes/sections/' . $name . '.php';
+    require __DIR__ . '/includes/sections/' . $name . '.php';
 }
 
 layout_foot();
