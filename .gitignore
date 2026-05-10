@@ -1,0 +1,29 @@
+# env / secrets
+.env
+.env.local
+
+# database (data dir kept via .gitkeep, content excluded)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# uploads (dir kept via .gitkeep, user files excluded)
+public_html/uploads/*
+!public_html/uploads/.gitkeep
+!public_html/uploads/.htaccess
+
+# OS / editor
+Thumbs.db
+.DS_Store
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# vendor (if Composer ever shows up — it shouldn't)
+vendor/
+
+# logs
+*.log

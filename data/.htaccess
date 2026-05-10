@@ -1,0 +1,3 @@
+# Defense in depth — if data/ ever ends up inside the webroot on a host that
+# doesn't allow files outside public_html/, this denies all access to the DB.
+Require all denied

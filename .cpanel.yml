@@ -1,0 +1,19 @@
+---
+# cPanel Git Version Control deploy script.
+# Triggered when you click "Update from Remote" or "Deploy HEAD Commit"
+# inside cPanel for the repository that mirrors this codebase.
+#
+# Layout: see BUILD_BRIEF.md §4. Files outside public_html/ are confirmed
+# allowed on this host (/home/cswebserver/). The .env file is uploaded ONCE
+# manually to /home/cswebserver/.env and is NEVER overwritten by deploys.
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/cswebserver/public_html/try/
+    - export HOMEPATH=/home/cswebserver
+    - /bin/mkdir -p $DEPLOYPATH
+    - /bin/mkdir -p $HOMEPATH/data
+    - /bin/cp -R public_html/. $DEPLOYPATH
+    - /bin/cp -R includes $HOMEPATH/
+    - /bin/cp -R migrations $HOMEPATH/
+    - /bin/cp -R scripts $HOMEPATH/
+    - /usr/bin/php $HOMEPATH/scripts/migrate.php
