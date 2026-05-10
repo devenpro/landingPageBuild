@@ -65,6 +65,8 @@ $allow = [
         'MULTI_SITE.md',
         'SETUP_GUIDE.md',
         'AI_GUIDE.md',
+        'AGENTS.md',
+        'PHASE_STATUS.md',
         '.gitignore',
         '.cpanel.yml',
         '.env.example',
