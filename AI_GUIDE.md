@@ -1,66 +1,148 @@
 # AI features — design notes and roadmap
 
-This is the placeholder doc for the AI feature set planned in Phases 10-13. It captures the architectural decisions so the implementation phases don't re-litigate them.
+Captures the architectural decisions for Phases 10-13 so the implementation phases don't re-litigate them. Updated alongside each AI-touching PR.
 
-> **Status:** Planning only. No AI code shipped yet.
+> **Status:** Planning only. No AI code shipped yet. Phase 10 starts the build.
+
+---
 
 ## What we're building
 
 | Phase | Feature | Surface |
 |---|---|---|
-| 10 | BYO API key management (encrypted at rest) | Admin: settings → AI keys |
-| 10 | Provider abstraction (Gemini, OpenRouter at v1) | Internal API |
+| 10 | BYO API key management (encrypted at rest with libsodium) | Admin: settings → AI keys |
+| 10 | Provider abstraction (Gemini + OpenRouter at v1) | Internal API |
 | 11 | AI page suggestions ("suggest pages for my business") | Admin: AI tools |
 | 11 | AI page generation ("create a services page about SEO in Bangalore") | Admin: AI tools |
 | 13 | Frontend chatbot widget | Public site |
-| 13 | Smart form field suggestions | Public site |
+| 13 | Smart form field suggestions | Public site (later in Phase 13) |
+
+---
 
 ## Provider strategy
 
-**v1 ships with two providers:**
-- **Gemini** — Google's API. Free tier exists but with strict rate limits (15 req/min, 1500/day on `gemini-1.5-flash` as of design). Good enough for admin-side use; bad for public chatbot at any scale.
-- **OpenRouter** — A gateway to many models (Claude, GPT, Llama, Mistral, etc.). Pay-as-you-go with low minimums. Lets the user pick a cheap model for casual use and a strong model for page generation.
+**v1 ships with two providers, deliberately:**
 
-Adding HuggingFace, Grok, etc. is left to later phases — each adapter is a maintenance liability and starting with two keeps the surface tight.
+- **Gemini** (`gemini-1.5-flash` and `gemini-1.5-pro`) — Google's API. Free tier exists with strict limits (~15 req/min, 1500/day on `flash` as of design time). Good enough for admin-side use; **bad for a public chatbot at any scale**.
+- **OpenRouter** (https://openrouter.ai) — gateway to many models (Claude, GPT, Llama, Mistral, etc.). Pay-as-you-go with low minimums. Lets the user pick a cheap model for casual use and a strong model for page generation. **This is what we recommend for production chatbot traffic.**
+
+Adding HuggingFace, Grok, etc. is left to later phases — each adapter is a maintenance liability (their endpoints change), and starting with two keeps the v1 surface tight. The provider abstraction (`core/lib/ai/client.php`) is designed so adding a new adapter is a matter of dropping a file in `core/lib/ai/providers/`.
+
+### Provider order in the UI
+
+Admin can store multiple keys per provider (with labels) and pick one as the active key per provider. Each AI tool (suggest pages, generate page, frontend chat) has its own preferred-provider setting in `.env` or admin settings — defaults:
+
+- Admin tools (suggest, generate) → Gemini (free tier sufficient for occasional use)
+- Frontend chat → OpenRouter (cost-controllable per request)
+
+---
 
 ## Key storage (Phase 10)
 
-- Master key in `.env` as `AI_KEYS_MASTER_KEY` (base64-encoded 32 bytes)
-- Per-key encryption with libsodium `crypto_secretbox_easy` (XSalsa20-Poly1305)
-- Schema: `ai_provider_keys (id, provider, label, encrypted_key BLOB, nonce BLOB, created_at, last_used_at)`
-- Decrypt only at the moment of API call; never log or display the plaintext key
-- Master key loss = unrecoverable. Documented in `SETUP_GUIDE.md` and the .env.example.
+### Encryption
+
+- **Master key** in `.env` as `AI_KEYS_MASTER_KEY` (base64-encoded 32 bytes). Generate once with:
+  ```bash
+  php -r 'echo base64_encode(random_bytes(32)), "\n";'
+  ```
+- **Per-key encryption** uses libsodium `crypto_secretbox_easy` (XSalsa20-Poly1305 authenticated encryption)
+- Each row stores `(nonce, encrypted_key)` separately; the nonce is generated fresh on every store via `random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES)`
+- Plaintext key exists in PHP memory only between `keys_decrypt()` and the outbound HTTP call, never logged, never sent to the browser, never persisted
+- **Master key loss = unrecoverable.** Documented in `SETUP_GUIDE.md` (§3) and `.env.example`. Back up the master key value in a password manager.
+
+### Schema (Phase 10 migration)
+
+```sql
+CREATE TABLE ai_provider_keys (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,           -- 'gemini' | 'openrouter'
+  label TEXT,                        -- user-given nickname e.g. 'personal-free' or 'agency-paid'
+  encrypted_key BLOB NOT NULL,       -- libsodium ciphertext
+  nonce BLOB NOT NULL,               -- 24-byte nonce
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME,
+  UNIQUE(provider, label)
+);
+```
+
+### Operation flow
+
+1. **Admin pastes a key** in `/admin/settings.php`
+2. Server generates a fresh nonce → encrypts with master key → stores `(provider, label, encrypted_key, nonce)` row
+3. **AI call needs the key**: `keys_get($provider, $label)` reads the row, decrypts in-memory, hands the plaintext to the provider adapter, updates `last_used_at`
+4. The plaintext key never leaves the request handler
+
+---
 
 ## Cost / abuse protection
 
 | Concern | Mitigation |
 |---|---|
-| Public chatbot abuse | Per-IP rate limit (e.g. 10 messages / 5 min) + global daily token cap, both stored in `ai_calls` table |
-| Provider failure | Try the user's selected provider; on 5xx/timeout, fail clearly to the user (no silent fallback) |
-| Cost surprise | Every call logs `tokens_in`, `tokens_out`, `cost_estimate_usd` to `ai_calls`. Admin → AI tools shows last-30-days spend per provider. |
-| Prompt injection (frontend chat) | System prompt template sanitises user input; refuses to reveal API keys, system prompts, or internal data |
+| Public chatbot abuse | Per-IP rate limit (e.g. 10 messages / 5 min) + global daily token cap. Both tracked via `ai_calls` rows + an `.env` cap. |
+| Provider failure | Try the user's selected provider once. On 5xx / timeout / quota error, fail clearly to the user with the provider's error message (no silent fallback to a different provider — that surprises billing). |
+| Cost surprise | Every call logs `tokens_in`, `tokens_out`, `cost_estimate_usd`, `provider`, `model`, `caller` to `ai_calls`. Admin AI tools page shows last-30-days spend per provider with a daily breakdown. |
+| Prompt injection (frontend chat) | System prompt template sanitises user input; refuses to reveal API keys, system prompts, internal data, or anything outside the chat's stated scope. |
+| Stale API keys | `last_used_at` lets admin see which keys are actually in rotation. Keys can be deleted from the UI; the row is removed (no soft-delete needed for this scale). |
 
-## Code layout
+---
+
+## Code layout (target after Phase 10-13)
 
 ```
 core/lib/
-├── crypto.php                 ← libsodium wrapper (encrypt/decrypt)
+├── crypto.php                       libsodium wrapper (encrypt/decrypt)
 └── ai/
-    ├── client.php             ← provider-agnostic facade: $client->chat($messages, $opts)
-    ├── keys.php               ← list/store/delete/decrypt keys
-    ├── log.php                ← write to ai_calls
-    ├── ratelimit.php          ← per-IP + daily cap
+    ├── client.php                   provider-agnostic facade: ai_chat($provider, $messages, $opts)
+    ├── keys.php                     list/store/delete/get(decrypt) keys
+    ├── log.php                      write to ai_calls
+    ├── ratelimit.php                per-IP + daily token cap
     ├── providers/
-    │   ├── gemini.php
-    │   └── openrouter.php
+    │   ├── gemini.php               implements the Gemini REST contract
+    │   └── openrouter.php           implements the OpenRouter REST contract (chat-completions API)
     └── prompts/
-        ├── suggest_pages.php
-        ├── generate_page.php
-        └── chat.php
+        ├── suggest_pages.php        prompt template + few-shot examples
+        ├── generate_page.php        prompt template (output: structured JSON for a pages row)
+        └── chat.php                 system prompt + sanitisation rules
 ```
 
-## Open questions (revisit when implementing)
+API endpoints (under `site/public/api/`):
 
-- Where do we draw the line between "core knows about AI" and "site knows about AI"? Provider abstraction belongs in core. Specific prompts (industry-specific page generation) might belong in site/.
-- Should AI suggestions be "draft pages for review" (safer) or "publish directly with rollback" (faster)? Probably draft-by-default.
-- Frontend chat history persistence — `ai_chat_messages` table covers this but adds privacy considerations (anonymous visitor messages stored). Maybe an .env flag to toggle.
+- `/api/ai/keys.php` — admin POST/DELETE for key management
+- `/api/ai/suggest.php` — admin POST for page suggestions
+- `/api/ai/generate.php` — admin POST for page generation
+- `/api/chat.php` — public POST for frontend chat (rate-limited)
+
+Admin UI pages:
+
+- `/admin/settings.php` — manage API keys
+- `/admin/ai.php` — AI tools (suggest, generate, view spend log)
+
+---
+
+## What's NOT decided yet
+
+These are deliberately deferred — pick when the implementing phase starts:
+
+- **Frontend chat persistence on/off** — `ai_chat_messages` table is in the master plan, but storing anonymous visitor messages has privacy implications. Likely an `.env` flag (`AI_CHAT_PERSIST=0|1`); when off, chat is in-session only.
+- **Page-template variable substitution syntax** — for programmatic SEO, a "Services in {city}" template generating one page per city. Could be Mustache-like (`{{city}}`), Twig-like (`{{ city }}`), or just `:city` placeholders. No prior art in this codebase to anchor to; pick when Phase 11 is detailed.
+- **AI-suggested vs AI-generated default state** — both default to `status='draft'` so admin reviews before publish. But "auto-publish AI suggestions" might be a per-site setting (e.g. for trusted internal use). Defer until we have actual usage data.
+- **Where industry-specific prompts live** — generic prompts (suggest pages, chat) belong in `core/lib/ai/prompts/`. Industry-specific tweaks (e.g. "you're an SEO expert for Bangalore freelancers") might belong in `site/` so each site can customise. Pattern TBD when Phase 11 lands.
+- **Streaming vs blocking AI responses** — both providers support streaming. For the chatbot this matters (UX); for admin-side generation, blocking is simpler. Likely chatbot streams via SSE and admin tools block.
+- **Token estimation before call** — would prevent surprise overruns ("this prompt costs $5"), but provider tokenizers vary. Phase 14 polish item; not gating Phase 10-11.
+
+---
+
+## Implementation reading order (when Phase 10 starts)
+
+1. Re-read [BUILD_BRIEF.md §5](BUILD_BRIEF.md) for the current data model (where `ai_provider_keys` and `ai_calls` slot in)
+2. Re-read this file
+3. Test libsodium availability: `php -r 'echo extension_loaded("sodium") ? "ok" : "missing";'`
+4. Generate a master key, add to `.env`, document in `SETUP_GUIDE.md` if needed
+5. Write the migration first (`core/migrations/0003_ai_keys.sql`, `0004_ai_calls.sql`)
+6. Build `core/lib/crypto.php` + tests (encrypt → decrypt round-trip)
+7. Build `core/lib/ai/keys.php`
+8. Build first provider adapter (Gemini, since free tier means no credit card for testing)
+9. End-to-end smoke test: store a key → make an actual API call → log → confirm spend appears
+10. Then UI
+
+Don't skip step 8's smoke test. The first time you call a provider against a real key, the failure mode list is long (CORS, auth header format, request body shape, error response shape). Get it working with curl first, then port to the adapter.

@@ -2,7 +2,9 @@
 
 Self-hosted PHP+SQLite product for building marketing/landing sites with optional AI assistance. Designed to deploy to cPanel shared hosting via Git Version Control with no build step.
 
-See [BUILD_BRIEF.md](BUILD_BRIEF.md) for the full spec, [SETUP_GUIDE.md](SETUP_GUIDE.md) for cPanel deploy, [MULTI_SITE.md](MULTI_SITE.md) for the multi-site model, and [AI_GUIDE.md](AI_GUIDE.md) for the AI feature roadmap.
+See [BUILD_BRIEF.md](BUILD_BRIEF.md) for the full spec, [SETUP_GUIDE.md](SETUP_GUIDE.md) for cPanel deploy, [MULTI_SITE.md](MULTI_SITE.md) for the multi-site model, [AI_GUIDE.md](AI_GUIDE.md) for the AI feature roadmap, and [PHASE_STATUS.md](PHASE_STATUS.md) for the live per-phase tracker.
+
+**For agents (Claude Code on mobile, future autonomous agents):** start with [AGENTS.md](AGENTS.md) — it's the operating manual (mode rules, common commands, gotchas, conventions). Read that plus BUILD_BRIEF and PHASE_STATUS and you're caught up.
 
 ## Layout
 
@@ -67,18 +69,23 @@ Without a mode set, all writes are blocked. Switching mid-session: just run the 
 
 ## Phase status
 
-- [x] **Phase 1** — Scaffolding ([PR #1](https://github.com/devenpro/landingPageBuild/pull/1))
-- [ ] Phase 2 — Static landing page (paused; superseded by Phase 3)
-- [ ] **Phase 3** — Architecture reset: multi-site + workflow modes (current)
-- [ ] Phase 4 — Pages table + hybrid routing
-- [ ] Phase 5 — Public form + webhook
-- [ ] Phase 6 — Admin auth + login
-- [ ] Phase 7 — Admin panel base + content_blocks CRUD
-- [ ] Phase 8 — Admin pages CRUD
-- [ ] Phase 9 — Inline editing
-- [ ] Phase 10 — AI key management + provider abstraction
+See [PHASE_STATUS.md](PHASE_STATUS.md) for the live tracker. Quick view:
+
+- [x] **Phase 1** — Scaffolding ([PR #1](https://github.com/devenpro/landingPageBuild/pull/1)) — merged
+- [ ] Phase 2 — Static landing page ([PR #2](https://github.com/devenpro/landingPageBuild/pull/2)) — *closed/superseded by Phase 3*
+- [ ] **Phase 3** — Architecture reset: multi-site `core/`+`site/` + workflow modes ([PR #3](https://github.com/devenpro/landingPageBuild/pull/3)) — open, awaiting merge
+- [ ] **Phase 4** — Pages table + hybrid routing + Home as file-based page ([PR #4](https://github.com/devenpro/landingPageBuild/pull/4)) — open
+- [ ] **Phase 5** — Public waitlist form + optional webhook ([PR #5](https://github.com/devenpro/landingPageBuild/pull/5)) — open
+- [ ] **Phase 6** — Admin auth (login, logout, brute-force lockout) ([PR #6](https://github.com/devenpro/landingPageBuild/pull/6)) — open
+- [ ] **Phase 7** — Admin panel base + content editor + forms inbox ([PR #7](https://github.com/devenpro/landingPageBuild/pull/7)) — open
+- [ ] **Phase 7.5** — Documentation refresh (BUILD_BRIEF v4, AGENTS, PHASE_STATUS, this file, AI_GUIDE) — this PR
+- [ ] Phase 8 — Pages CRUD UI + data-driven page renderer
+- [ ] Phase 9 — Inline editing on the public page
+- [ ] Phase 10 — AI keys (BYO + libsodium) + provider abstraction (Gemini, OpenRouter)
 - [ ] Phase 11 — Admin AI tools (page suggestions, AI page generation)
 - [ ] Phase 12 — Media library + uploads UI
 - [ ] Phase 13 — Frontend AI features (chatbot, smart forms)
-- [ ] Phase 14 — Polish (motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down)
-- [ ] Phase 15 — Launch
+- [ ] Phase 14 — Polish (motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback)
+- [ ] Phase 15 — Launch (DNS, final QA, content entry, tag `core/VERSION` as `v1.0.0`)
+
+PRs #3-#7 are stacked. Merge order: lowest first. Each retargets against `main` automatically once its base merges.
