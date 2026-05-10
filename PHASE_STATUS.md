@@ -8,22 +8,22 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 |---|---|---|---|---|
 | 1 | Scaffolding | ✅ | [#1](https://github.com/devenpro/landingPageBuild/pull/1) | merged into `main` |
 | 2 | Static landing page (single-tenant) | ⏸️ | [#2](https://github.com/devenpro/landingPageBuild/pull/2) — *superseded by #3* | `phase-2-static-sections` |
-| 3 | Architecture reset — multi-site `core`+`site` + workflow modes | 🟡 | [#3](https://github.com/devenpro/landingPageBuild/pull/3) | `phase-3-architecture-reset` |
-| 4 | Pages table + hybrid routing + Home as file-based page | 🟡 | [#4](https://github.com/devenpro/landingPageBuild/pull/4) | `phase-4-pages-routing` |
-| 5 | Public waitlist form + optional outbound webhook | 🟡 | [#5](https://github.com/devenpro/landingPageBuild/pull/5) | `phase-5-public-form` |
-| 6 | Admin auth — login, logout, brute-force lockout | 🟡 | [#6](https://github.com/devenpro/landingPageBuild/pull/6) | `phase-6-admin-auth` |
-| 7 | Admin panel base + content_blocks editor + forms inbox | 🟡 | [#7](https://github.com/devenpro/landingPageBuild/pull/7) | `phase-7-admin-content` |
-| 7.5 | Documentation refresh (BUILD_BRIEF v4, AGENTS, PHASE_STATUS, README, AI_GUIDE) | 🚧 | this PR | `phase-7.5-docs-and-brief` |
-| 8 | Pages CRUD UI + data-driven page renderer | ⏳ | — | — |
-| 9 | Inline editing on the public page | ⏳ | — | — |
-| 10 | AI key management (BYO + libsodium) + provider abstraction (Gemini, OpenRouter) | ⏳ | — | — |
+| 3 | Architecture reset — multi-site `core`+`site` + workflow modes | ✅ | [#3](https://github.com/devenpro/landingPageBuild/pull/3) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 4 | Pages table + hybrid routing + Home as file-based page | ✅ | [#4](https://github.com/devenpro/landingPageBuild/pull/4) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 5 | Public waitlist form + optional outbound webhook | ✅ | [#5](https://github.com/devenpro/landingPageBuild/pull/5) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 6 | Admin auth — login, logout, brute-force lockout | ✅ | [#6](https://github.com/devenpro/landingPageBuild/pull/6) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 7 | Admin panel base + content_blocks editor + forms inbox | ✅ | [#7](https://github.com/devenpro/landingPageBuild/pull/7) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 7.5 | Documentation refresh (BUILD_BRIEF v4, AGENTS, PHASE_STATUS, README, AI_GUIDE) | ✅ | [#8](https://github.com/devenpro/landingPageBuild/pull/8) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 8 | Pages CRUD UI + data-driven page renderer | ✅ | [#9](https://github.com/devenpro/landingPageBuild/pull/9) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 9 | Inline editing on the public page | ✅ | [#10](https://github.com/devenpro/landingPageBuild/pull/10) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
+| 10 | AI key management (BYO + libsodium) + provider abstraction (Gemini, OpenRouter) | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
 | 11 | Admin AI tools — page suggestions, AI page generation | ⏳ | — | — |
 | 12 | Media library + uploads UI | ⏳ | — | — |
 | 13 | Frontend AI features — chatbot widget + rate limiting | ⏳ | — | — |
 | 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | ⏳ | — | — |
 | 15 | Launch — DNS, final QA, content entry | ⏳ | — | — |
 
-PRs #3 → #4 → #5 → #6 → #7 are stacked. Merge order: lowest first. Each retargets against `main` automatically once its base merges.
+Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11](https://github.com/devenpro/landingPageBuild/pull/11) on 2026-05-10. The individual stack PRs (#3-#10) all merged into their bases first; #11 brought the final tip into `main`.
 
 ---
 
@@ -102,26 +102,22 @@ PRs #3 → #4 → #5 → #6 → #7 are stacked. Merge order: lowest first. Each 
 - `site/public/assets/js/admin.js` — per-row save AJAX, Cmd/Ctrl+Enter shortcut, toast notifications, live filter
 - Verified: 7 scenarios
 
-### Phase 7.5 — Documentation refresh 🚧 (this PR)
+### Phase 7.5 — Documentation refresh ✅ ([#8](https://github.com/devenpro/landingPageBuild/pull/8))
 
 - BUILD_BRIEF.md v4 (full rewrite, supersedes v3)
 - AGENTS.md (new — operating manual for agents)
-- PHASE_STATUS.md (this file, new)
+- PHASE_STATUS.md (this file)
 - README.md phase checklist updated
 - AI_GUIDE.md refreshed with current decisions
 
----
-
-## What each pending phase will deliver
-
-### Phase 8 — Pages CRUD UI + data-driven render
+### Phase 8 — Pages CRUD UI + data-driven render ✅ ([#9](https://github.com/devenpro/landingPageBuild/pull/9))
 
 - `/admin/pages.php` (list + create + edit + status toggle)
 - `/api/pages.php` (POST/PATCH/DELETE with auth + CSRF)
-- Real data-driven renderer (`render_page()`'s `is_file_based=0` branch) that walks `sections_json` and includes the right partials with page-scoped content keys
-- Schema for page-scoped content (e.g. `page.<slug>.<section>.<field>` namespacing convention)
+- Data-driven renderer (`render_page()`'s `is_file_based=0` branch) walks `sections_json` and includes the right partials with page-scoped content keys
+- Page-scoped content key convention: `page.<slug>.<section>.<field>`
 
-### Phase 9 — Inline editing on public page
+### Phase 9 — Inline editing on public page ✅ ([#10](https://github.com/devenpro/landingPageBuild/pull/10))
 
 - `editor.js` loaded only when admin session is active
 - Click-to-edit on `[data-edit]` markers (already wrapped in every section)
@@ -129,7 +125,11 @@ PRs #3 → #4 → #5 → #6 → #7 are stacked. Merge order: lowest first. Each 
 - Reuses `/api/content.php` PATCH endpoint with `{changes:[...]}`
 - Hover/active visual states from `site/public/assets/css/styles.css` `.edit-mode` rules
 
-### Phase 10 — AI keys + provider abstraction
+---
+
+## What each pending phase will deliver
+
+### Phase 10 — AI keys + provider abstraction 🚧 (in flight)
 
 - `core/lib/crypto.php` — libsodium secretbox wrapper
 - `core/lib/ai/keys.php` — store/list/decrypt provider keys
