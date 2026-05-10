@@ -23,7 +23,7 @@ Captures the architectural decisions for Phases 10-13 so the implementation phas
 
 **v1 ships with two providers, deliberately:**
 
-- **Gemini** (`gemini-1.5-flash` and `gemini-1.5-pro`) — Google's API. Free tier exists with strict limits (~15 req/min, 1500/day on `flash` as of design time). Good enough for admin-side use; **bad for a public chatbot at any scale**.
+- **Gemini** (`gemini-2.5-flash` and `gemini-2.5-pro`) — Google's API. Free tier exists with strict limits (~15 req/min, 1500/day on `flash` as of design time). Good enough for admin-side use; **bad for a public chatbot at any scale**. Older 1.5-series models were retired by Google in early 2026 — adapter default is now `gemini-2.5-flash`; query `models?key=…` against `generativelanguage.googleapis.com/v1beta` if you need to discover currently-available names.
 - **OpenRouter** (https://openrouter.ai) — gateway to many models (Claude, GPT, Llama, Mistral, etc.). Pay-as-you-go with low minimums. Lets the user pick a cheap model for casual use and a strong model for page generation. **This is what we recommend for production chatbot traffic.**
 
 Adding HuggingFace, Grok, etc. is left to later phases — each adapter is a maintenance liability (their endpoints change), and starting with two keeps the v1 surface tight. The provider abstraction (`core/lib/ai/client.php`) is designed so adding a new adapter is a matter of dropping a file in `core/lib/ai/providers/`.
@@ -143,7 +143,9 @@ These are deliberately deferred — pick when the implementing phase starts:
 6. ✅ Build `core/lib/crypto.php` (libsodium secretbox wrapper, encrypt/decrypt round-trip verified locally)
 7. ✅ Build `core/lib/ai/keys.php`
 8. ✅ Build first provider adapter (Gemini) — request/response shaping, cost estimate for `gemini-1.5-flash`/`pro`
-9. ⏳ End-to-end smoke test: store a real Gemini free-tier key → make an actual API call → log → confirm spend appears
-10. ⏳ Admin UI (`/admin/ai-keys.php` + `/api/ai/keys.php`)
+9. ✅ End-to-end smoke test: real free-tier key stored encrypted → `ai_chat()` → live `gemini-2.5-flash` round-trip in ~700ms → tokens logged to `ai_calls`
+10. ✅ Admin UI (`/admin/ai-keys.php` + `/api/ai/keys.php`)
 
-Don't skip step 9's smoke test. The first time you call a provider against a real key, the failure mode list is long (CORS, auth header format, request body shape, error response shape). Get it working with curl first, then re-verify against the adapter.
+Notes captured during the smoke test:
+- **Gemini 2.5 "thinking" tokens are billable.** `usageMetadata.thoughtsTokenCount` is hidden from the response text but counts toward your quota. The adapter now sums it into `tokens_out` so the daily cap and spend reports reflect what Google actually bills. A small `max_tokens` budget can be entirely consumed by thoughts, leaving the visible text empty — callers should treat empty `text` as "model ran out of budget before producing output" and either retry with a higher cap or surface that to the user.
+- Older `gemini-1.5-*` aliases were retired by Google in early 2026. Use `gemini-2.5-flash` / `2.5-pro`, or query `models?key=…` against `generativelanguage.googleapis.com/v1beta` to discover currently-available names.

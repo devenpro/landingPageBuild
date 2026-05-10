@@ -9,23 +9,16 @@
 //   our 'user' role             → contents[].role = 'user'
 //   our 'assistant' role        → contents[].role = 'model'  (Gemini's own term)
 //
-// Cost estimate: only computed for the two models we explicitly recommend
-// (flash + pro). Anything else logs cost_usd=0; admin can look up actuals
-// on the Google Cloud console.
+// Cost: tokens are recorded; cost_usd is logged as 0. Per-model pricing
+// changes too often (and silently — old aliases get retired) to embed
+// here. Admins read authoritative spend on the Google Cloud console;
+// a Phase 14 polish item will plumb a per-call cost lookup.
 
 declare(strict_types=1);
 
-const GUA_GEMINI_DEFAULT_MODEL = 'gemini-1.5-flash';
+const GUA_GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
 const GUA_GEMINI_ENDPOINT      = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const GUA_GEMINI_TIMEOUT_SEC   = 30;
-
-// Per 1M tokens, USD. Last reviewed 2026-05; verify before relying on for
-// alerts. Out-of-bounds models fall back to 0 (logged but unpriced).
-const GUA_GEMINI_PRICING = [
-    'gemini-1.5-flash'     => ['in' => 0.075, 'out' => 0.30],
-    'gemini-1.5-flash-8b'  => ['in' => 0.0375,'out' => 0.15],
-    'gemini-1.5-pro'       => ['in' => 1.25,  'out' => 5.00],
-];
 
 function ai_provider_gemini_chat(string $api_key, array $messages, array $opts = []): array
 {
@@ -95,21 +88,22 @@ function ai_provider_gemini_chat(string $api_key, array $messages, array $opts =
         if (isset($part['text'])) $text .= $part['text'];
     }
 
-    $tokens_in  = (int)($resp['usageMetadata']['promptTokenCount']     ?? 0);
-    $tokens_out = (int)($resp['usageMetadata']['candidatesTokenCount'] ?? 0);
-
-    $cost = 0.0;
-    if (isset(GUA_GEMINI_PRICING[$model])) {
-        $p = GUA_GEMINI_PRICING[$model];
-        $cost = ($tokens_in / 1_000_000) * $p['in'] + ($tokens_out / 1_000_000) * $p['out'];
-    }
+    $tokens_in   = (int)($resp['usageMetadata']['promptTokenCount']     ?? 0);
+    $tokens_vis  = (int)($resp['usageMetadata']['candidatesTokenCount'] ?? 0);
+    $tokens_thought = (int)($resp['usageMetadata']['thoughtsTokenCount'] ?? 0);
+    // Gemini 2.x "thinking" models bill hidden reasoning tokens alongside
+    // the visible response. Sum them into tokens_out so the daily cap and
+    // spend reports reflect actual usage. If a caller sets a tight
+    // max_tokens budget the model can spend it all on thoughts and
+    // produce empty text — caller decides whether that's an error.
+    $tokens_out  = $tokens_vis + $tokens_thought;
 
     return [
         'text'       => $text,
         'model'      => $model,
         'tokens_in'  => $tokens_in,
         'tokens_out' => $tokens_out,
-        'cost_usd'   => $cost,
+        'cost_usd'   => 0.0,
         'raw'        => $resp,
     ];
 }
