@@ -2,7 +2,7 @@
 
 Captures the architectural decisions for Phases 10-13 so the implementation phases don't re-litigate them. Updated alongside each AI-touching PR.
 
-> **Status:** Planning only. No AI code shipped yet. Phase 10 starts the build.
+> **Status:** Phase 10 in flight. Scaffold + provider adapters shipped; admin UI for key management lands in this same phase.
 
 ---
 
@@ -114,8 +114,9 @@ API endpoints (under `site/public/api/`):
 
 Admin UI pages:
 
-- `/admin/settings.php` — manage API keys
-- `/admin/ai.php` — AI tools (suggest, generate, view spend log)
+- `/admin/ai-keys.php` — manage API keys (Phase 10)
+- `/admin/ai.php` — AI tools (suggest, generate, view spend log) (Phase 11)
+- `/admin/settings.php` — general site settings, reserved for later phases
 
 ---
 
@@ -132,17 +133,17 @@ These are deliberately deferred — pick when the implementing phase starts:
 
 ---
 
-## Implementation reading order (when Phase 10 starts)
+## Implementation reading order (Phase 10 progress)
 
-1. Re-read [BUILD_BRIEF.md §5](BUILD_BRIEF.md) for the current data model (where `ai_provider_keys` and `ai_calls` slot in)
-2. Re-read this file
-3. Test libsodium availability: `php -r 'echo extension_loaded("sodium") ? "ok" : "missing";'`
-4. Generate a master key, add to `.env`, document in `SETUP_GUIDE.md` if needed
-5. Write the migration first (`core/migrations/0003_ai_keys.sql`, `0004_ai_calls.sql`)
-6. Build `core/lib/crypto.php` + tests (encrypt → decrypt round-trip)
-7. Build `core/lib/ai/keys.php`
-8. Build first provider adapter (Gemini, since free tier means no credit card for testing)
-9. End-to-end smoke test: store a key → make an actual API call → log → confirm spend appears
-10. Then UI
+1. ✅ Re-read [BUILD_BRIEF.md §5](BUILD_BRIEF.md) for the current data model (where `ai_provider_keys` and `ai_calls` slot in)
+2. ✅ Re-read this file
+3. ✅ Test libsodium availability: `php -r 'echo extension_loaded("sodium") ? "ok" : "missing";'`
+4. ⏳ Generate a master key per deployment, add to `.env`, document in `SETUP_GUIDE.md` (per-site, not committed)
+5. ✅ Write the migration first (consolidated into `core/migrations/0003_ai_keys.sql` — both tables in one file since they ship together)
+6. ✅ Build `core/lib/crypto.php` (libsodium secretbox wrapper, encrypt/decrypt round-trip verified locally)
+7. ✅ Build `core/lib/ai/keys.php`
+8. ✅ Build first provider adapter (Gemini) — request/response shaping, cost estimate for `gemini-1.5-flash`/`pro`
+9. ⏳ End-to-end smoke test: store a real Gemini free-tier key → make an actual API call → log → confirm spend appears
+10. ⏳ Admin UI (`/admin/ai-keys.php` + `/api/ai/keys.php`)
 
-Don't skip step 8's smoke test. The first time you call a provider against a real key, the failure mode list is long (CORS, auth header format, request body shape, error response shape). Get it working with curl first, then port to the adapter.
+Don't skip step 9's smoke test. The first time you call a provider against a real key, the failure mode list is long (CORS, auth header format, request body shape, error response shape). Get it working with curl first, then re-verify against the adapter.

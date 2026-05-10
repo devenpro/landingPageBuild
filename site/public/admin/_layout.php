@@ -19,7 +19,7 @@ function admin_nav_items(): array
         ['slug' => 'pages',     'label' => 'Pages',     'href' => '/admin/pages.php',     'live' => true],
         ['slug' => 'forms',     'label' => 'Forms',     'href' => '/admin/forms.php',     'live' => true],
         ['slug' => 'media',     'label' => 'Media',     'href' => '#',                    'live' => false, 'phase' => 12],
-        ['slug' => 'ai_keys',   'label' => 'AI keys',   'href' => '#',                    'live' => false, 'phase' => 10],
+        ['slug' => 'ai_keys',   'label' => 'AI keys',   'href' => '/admin/ai-keys.php',   'live' => true],
         ['slug' => 'ai_tools',  'label' => 'AI tools',  'href' => '#',                    'live' => false, 'phase' => 11],
         ['slug' => 'settings',  'label' => 'Settings',  'href' => '#',                    'live' => false, 'phase' => 10],
     ];
