@@ -29,10 +29,10 @@ admin_head('Dashboard', 'dashboard');
             <div class="mt-1 text-2xl font-semibold text-ink-900"><?= $content_count ?></div>
             <div class="mt-1 text-xs text-brand-700">Edit content &rarr;</div>
         </a>
-        <a href="#" class="block rounded-xl border border-dashed border-ink-200 bg-white/60 p-4">
+        <a href="/admin/pages.php" class="block rounded-xl border border-ink-100 bg-white p-4 transition hover:border-brand-200 hover:shadow-sm">
             <div class="text-xs font-medium uppercase tracking-wider text-ink-500">Pages</div>
-            <div class="mt-1 text-2xl font-semibold text-ink-700"><?= $pages_count ?></div>
-            <div class="mt-1 text-xs text-ink-400">CRUD lands in Phase 8</div>
+            <div class="mt-1 text-2xl font-semibold text-ink-900"><?= $pages_count ?></div>
+            <div class="mt-1 text-xs text-brand-700">Manage pages &rarr;</div>
         </a>
         <a href="/admin/forms.php" class="block rounded-xl border border-ink-100 bg-white p-4 transition hover:border-brand-200 hover:shadow-sm">
             <div class="text-xs font-medium uppercase tracking-wider text-ink-500">Form submissions</div>
@@ -43,10 +43,6 @@ admin_head('Dashboard', 'dashboard');
 
     <h2 class="mt-10 text-sm font-semibold uppercase tracking-wider text-ink-500">Coming soon</h2>
     <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="rounded-xl border border-dashed border-ink-200 bg-white/60 p-4 text-sm text-ink-500">
-            <div class="font-semibold text-ink-700">Pages CRUD</div>
-            <div class="mt-1 text-xs">Add/edit/delete pages — Phase 8</div>
-        </div>
         <div class="rounded-xl border border-dashed border-ink-200 bg-white/60 p-4 text-sm text-ink-500">
             <div class="font-semibold text-ink-700">Inline editing</div>
             <div class="mt-1 text-xs">Edit text/images on the live page — Phase 9</div>
