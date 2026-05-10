@@ -19,8 +19,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 10 | AI key management (BYO + libsodium) + provider abstraction (HuggingFace, Gemini, OpenRouter) | ✅ | [#12](https://github.com/devenpro/landingPageBuild/pull/12) + [#13](https://github.com/devenpro/landingPageBuild/pull/13) | merged into `main` |
 | 11 | Admin AI tools — page suggestions, AI page generation | ✅ | [#14](https://github.com/devenpro/landingPageBuild/pull/14) | merged into `main` |
 | 12 | Media library + uploads UI | ✅ | [#15](https://github.com/devenpro/landingPageBuild/pull/15) | merged into `main` |
-| 13 | Frontend AI features — chatbot widget + rate limiting | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
-| 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | ⏳ | — | — |
+| 13 | Frontend AI features — chatbot widget + rate limiting | ✅ | [#16](https://github.com/devenpro/landingPageBuild/pull/16) | merged into `main` |
+| 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | 🚧 | this branch (Round A: admin + SEO) | `claude/review-next-tasks-tmBYG` |
 | 15 | Launch — DNS, final QA, content entry | ⏳ | — | — |
 
 Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11](https://github.com/devenpro/landingPageBuild/pull/11) on 2026-05-10. The individual stack PRs (#3-#10) all merged into their bases first; #11 brought the final tip into `main`.
@@ -157,16 +157,19 @@ Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11]
 - `/admin/content.php` — image- and video-typed rows now have a "Browse media" button + `<dialog>`-based picker modal that lazy-loads the gallery filtered by kind and fills the input on click
 - Verified live: PHP-as-PNG attack rejected by finfo; MIME/ext mismatch rejected; valid PNG + SVG round-tripped end-to-end
 
+### Phase 13 — Frontend chatbot ✅ ([#16](https://github.com/devenpro/landingPageBuild/pull/16))
+
+- `core/migrations/0004_chat.sql` — `ai_chat_messages` table (session_id, role, content, ip, ua, created_at)
+- `core/lib/ai/prompts/chat.php` — system prompt built at request time from current `content_blocks` (hero + features + faq), with explicit anti-extraction rules and a sanitised `chat_messages()` builder that caps each message at 4000 chars
+- `core/lib/config.php` — `GUA_AI_CHAT_ENABLED` + `GUA_AI_CHAT_PERSIST` knobs, both default OFF
+- `/api/chat.php` — public POST, rate-limited via Phase 10's `core/lib/ai/ratelimit.php` (no `skip_ratelimit`); 404s when disabled (hides config from probes); 429 on rate-limit, 502 on provider error; persistence is best-effort
+- `site/public/assets/js/chat-widget.js` + `styles.css` — floating bubble + slide-up panel, conversation in localStorage, Enter-to-send, mobile responsive, self-contained CSS (no Tailwind classes)
+- `site/layout.php` — emits `<script src="chat-widget.js" defer>` only when `GUA_AI_CHAT_ENABLED`
+- Verified live with Gemini: response was contextually accurate, drawn directly from `hero.headline`; persistence wrote both turns to `ai_chat_messages`; disabled state correctly returned 404
+
 ## What each pending phase will deliver
 
-### Phase 13 — Frontend chatbot 🚧 (in flight)
-
-- Floating widget on the public site
-- `/api/chat.php` — rate-limited (per-IP + daily global cap), uses admin's stored keys
-- `core/lib/ai/prompts/chat.php` — system prompt with sanitisation
-- Optional persistence in `ai_chat_messages` (toggleable via `.env`)
-
-### Phase 14 — Polish
+### Phase 14 — Polish 🚧 (in flight)
 
 - Hand-built `styles.css` replacing Tailwind Play CDN
 - JSON-LD `Organization`/`WebSite`/`Product`

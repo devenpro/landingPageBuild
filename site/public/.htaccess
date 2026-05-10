@@ -17,6 +17,10 @@ Options -Indexes
     RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+    # Phase 14: dynamic XML sitemap. Keeps the canonical /sitemap.xml URL
+    # in robots.txt + crawler reports while routing to a PHP handler.
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
     # Front controller: route any non-existent file/dir to index.php.
     # Phase 4's router uses REQUEST_URI to look up the page slug.
     RewriteCond %{REQUEST_FILENAME} !-f

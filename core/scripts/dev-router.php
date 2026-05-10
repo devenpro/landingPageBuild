@@ -12,6 +12,14 @@
 declare(strict_types=1);
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+
+// Phase 14: clean URL for the dynamic sitemap. Apache rewrites this via
+// site/public/.htaccess; we mirror it here so `php -S` matches prod.
+if ($path === '/sitemap.xml') {
+    require __DIR__ . '/../../site/public/sitemap.php';
+    return;
+}
+
 if (is_string($path) && $path !== '/' && is_file(__DIR__ . '/../../site/public' . $path)) {
     return false;  // Let the built-in server send the static file
 }
