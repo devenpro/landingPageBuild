@@ -20,7 +20,7 @@ function admin_nav_items(): array
         ['slug' => 'forms',     'label' => 'Forms',     'href' => '/admin/forms.php',     'live' => true],
         ['slug' => 'media',     'label' => 'Media',     'href' => '#',                    'live' => false, 'phase' => 12],
         ['slug' => 'ai_keys',   'label' => 'AI keys',   'href' => '/admin/ai-keys.php',   'live' => true],
-        ['slug' => 'ai_tools',  'label' => 'AI tools',  'href' => '#',                    'live' => false, 'phase' => 11],
+        ['slug' => 'ai_tools',  'label' => 'AI tools',  'href' => '/admin/ai.php',        'live' => true],
         ['slug' => 'settings',  'label' => 'Settings',  'href' => '#',                    'live' => false, 'phase' => 10],
     ];
 }

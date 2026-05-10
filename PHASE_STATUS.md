@@ -16,8 +16,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 7.5 | Documentation refresh (BUILD_BRIEF v4, AGENTS, PHASE_STATUS, README, AI_GUIDE) | ✅ | [#8](https://github.com/devenpro/landingPageBuild/pull/8) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 8 | Pages CRUD UI + data-driven page renderer | ✅ | [#9](https://github.com/devenpro/landingPageBuild/pull/9) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 9 | Inline editing on the public page | ✅ | [#10](https://github.com/devenpro/landingPageBuild/pull/10) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
-| 10 | AI key management (BYO + libsodium) + provider abstraction (HuggingFace, Gemini, OpenRouter) | 🟡 | this PR (scaffold portion landed via [#12](https://github.com/devenpro/landingPageBuild/pull/12)) | `claude/review-next-tasks-tmBYG` |
-| 11 | Admin AI tools — page suggestions, AI page generation | ⏳ | — | — |
+| 10 | AI key management (BYO + libsodium) + provider abstraction (HuggingFace, Gemini, OpenRouter) | ✅ | [#12](https://github.com/devenpro/landingPageBuild/pull/12) + [#13](https://github.com/devenpro/landingPageBuild/pull/13) | merged into `main` |
+| 11 | Admin AI tools — page suggestions, AI page generation | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
 | 12 | Media library + uploads UI | ⏳ | — | — |
 | 13 | Frontend AI features — chatbot widget + rate limiting | ⏳ | — | — |
 | 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | ⏳ | — | — |
@@ -125,22 +125,24 @@ Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11]
 - Reuses `/api/content.php` PATCH endpoint with `{changes:[...]}`
 - Hover/active visual states from `site/public/assets/css/styles.css` `.edit-mode` rules
 
+### Phase 10 — AI keys + provider abstraction ✅ ([#12](https://github.com/devenpro/landingPageBuild/pull/12) + [#13](https://github.com/devenpro/landingPageBuild/pull/13))
+
+- `core/lib/crypto.php` — libsodium secretbox wrapper
+- `core/lib/ai/keys.php` — store/list/decrypt provider keys, three-provider whitelist (`huggingface`, `gemini`, `openrouter`)
+- `core/lib/ai/client.php` — `ai_chat()` facade + `ai_default_provider()` helper
+- `core/lib/ai/providers/{huggingface,gemini,openrouter}.php` — real adapters (HF Router, Gemini 2.5, OpenRouter)
+- `core/lib/ai/log.php` — every call logged to `ai_calls`
+- `core/lib/ai/ratelimit.php` — per-IP + global daily token cap
+- Schema migration `0003_ai_keys.sql`: `ai_provider_keys`, `ai_calls`
+- `/admin/ai-keys.php` UI for adding/managing keys (`/api/ai/keys.php` admin POST/DELETE)
+- `AI_DEFAULT_PROVIDER` and `HF_DEFAULT_MODEL` env knobs (defaults: `huggingface` / `meta-llama/Llama-3.3-70B-Instruct`)
+- Live smoke verified against `gemini-2.5-flash` (719ms PONG round-trip with thinking-tokens accounted)
+
 ---
 
 ## What each pending phase will deliver
 
-### Phase 10 — AI keys + provider abstraction 🚧 (in flight)
-
-- `core/lib/crypto.php` — libsodium secretbox wrapper
-- `core/lib/ai/keys.php` — store/list/decrypt provider keys
-- `core/lib/ai/client.php` — provider-agnostic facade
-- `core/lib/ai/providers/{gemini,openrouter}.php` — v1 adapters
-- `core/lib/ai/log.php` — every call logged to `ai_calls`
-- `core/lib/ai/ratelimit.php` — per-IP + global daily token cap
-- Schema migrations: `ai_provider_keys`, `ai_calls`
-- `/admin/settings.php` UI for adding/managing keys
-
-### Phase 11 — Admin AI tools
+### Phase 11 — Admin AI tools 🚧 (in flight)
 
 - `/admin/ai.php` — UI for "suggest pages" and "generate page from brief"
 - `core/lib/ai/prompts/{suggest_pages,generate_page}.php` — prompt templates
