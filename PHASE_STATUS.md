@@ -16,7 +16,7 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 7.5 | Documentation refresh (BUILD_BRIEF v4, AGENTS, PHASE_STATUS, README, AI_GUIDE) | ✅ | [#8](https://github.com/devenpro/landingPageBuild/pull/8) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 8 | Pages CRUD UI + data-driven page renderer | ✅ | [#9](https://github.com/devenpro/landingPageBuild/pull/9) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 9 | Inline editing on the public page | ✅ | [#10](https://github.com/devenpro/landingPageBuild/pull/10) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
-| 10 | AI key management (BYO + libsodium) + provider abstraction (Gemini, OpenRouter) | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
+| 10 | AI key management (BYO + libsodium) + provider abstraction (HuggingFace, Gemini, OpenRouter) | 🟡 | this PR (scaffold portion landed via [#12](https://github.com/devenpro/landingPageBuild/pull/12)) | `claude/review-next-tasks-tmBYG` |
 | 11 | Admin AI tools — page suggestions, AI page generation | ⏳ | — | — |
 | 12 | Media library + uploads UI | ⏳ | — | — |
 | 13 | Frontend AI features — chatbot widget + rate limiting | ⏳ | — | — |
