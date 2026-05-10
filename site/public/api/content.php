@@ -1,16 +1,21 @@
 <?php
-// site/public/api/content.php — admin-only PATCH endpoint for content_blocks.
+// site/public/api/content.php — admin-only UPSERT endpoint for content_blocks.
 //
 // Accepts:
-//   - JSON body: {"key":"hero.headline","value":"new value"}
-//   - JSON body: {"changes":[{"key":"...","value":"..."}, …]} for batch
-//   - form-urlencoded equivalents (csrf=&key=&value=)
+//   - JSON body: {"key":"hero.headline","value":"new value","type":"text"}
+//   - JSON body: {"changes":[{"key":"...","value":"...","type":"..."}, …]} for batch
+//   - form-urlencoded equivalents (csrf=&key=&value=&type=)
+//
+// 'type' is optional and only used when the row doesn't exist yet
+// (Phase 9 inline editor uses this when an admin edits a page-scoped
+// key for the first time on a data-driven page). Defaults to 'text'.
+// Must be one of: text, image, video, icon, list, seo.
 //
 // Auth: must be logged in admin (auth_current_user())
 // CSRF: X-CSRF-Token header OR csrf form field
 // Method: PATCH or POST (Apache shared hosts sometimes drop PATCH; POST is the safe twin)
 //
-// Returns JSON {ok:true, applied:N, updated_at:'...'} or
+// Returns JSON {ok:true, applied:N, inserted:N, updated_at:'...'} or
 // {ok:false, error:'...'} with appropriate HTTP status.
 
 declare(strict_types=1);
@@ -53,13 +58,30 @@ if (stripos($ctype, 'application/json') !== false) {
     }
 }
 
+$VALID_TYPES = ['text', 'image', 'video', 'icon', 'list', 'seo'];
+
 $changes = [];
+$normalize = function (array $c) use ($VALID_TYPES): ?array {
+    if (!isset($c['key'])) return null;
+    $type = isset($c['type']) ? (string) $c['type'] : 'text';
+    if (!in_array($type, $VALID_TYPES, true)) {
+        $type = 'text';
+    }
+    return [
+        'key'   => (string) $c['key'],
+        'value' => (string) ($c['value'] ?? ''),
+        'type'  => $type,
+    ];
+};
+
 if (isset($body['key'])) {
-    $changes[] = ['key' => (string) $body['key'], 'value' => (string) ($body['value'] ?? '')];
+    $c = $normalize($body);
+    if ($c) $changes[] = $c;
 } elseif (isset($body['changes']) && is_array($body['changes'])) {
-    foreach ($body['changes'] as $c) {
-        if (is_array($c) && isset($c['key'])) {
-            $changes[] = ['key' => (string) $c['key'], 'value' => (string) ($c['value'] ?? '')];
+    foreach ($body['changes'] as $entry) {
+        if (is_array($entry)) {
+            $c = $normalize($entry);
+            if ($c) $changes[] = $c;
         }
     }
 }
@@ -73,19 +95,36 @@ if ($changes === []) {
 $pdo = db();
 $pdo->beginTransaction();
 try {
-    $upd = $pdo->prepare(
-        'UPDATE content_blocks
-         SET value = :v, updated_at = CURRENT_TIMESTAMP, updated_by = :u
-         WHERE key = :k'
+    // SQLite UPSERT: INSERT and update on key conflict. Tracks whether
+    // the row already existed via the changes() count returned by SQLite.
+    $upsert = $pdo->prepare(
+        'INSERT INTO content_blocks (key, value, type, updated_at, updated_by)
+         VALUES (:k, :v, :t, CURRENT_TIMESTAMP, :u)
+         ON CONFLICT(key) DO UPDATE SET
+            value      = excluded.value,
+            updated_at = CURRENT_TIMESTAMP,
+            updated_by = excluded.updated_by'
     );
-    $applied = 0;
-    $missing = [];
+
+    $existed = $pdo->prepare('SELECT 1 FROM content_blocks WHERE key = :k LIMIT 1');
+
+    $updated  = 0;
+    $inserted = 0;
     foreach ($changes as $c) {
-        $upd->execute([':v' => $c['value'], ':u' => $user['id'], ':k' => $c['key']]);
-        if ($upd->rowCount() > 0) {
-            $applied++;
+        $existed->execute([':k' => $c['key']]);
+        $was_present = (bool) $existed->fetchColumn();
+
+        $upsert->execute([
+            ':k' => $c['key'],
+            ':v' => $c['value'],
+            ':t' => $c['type'],
+            ':u' => $user['id'],
+        ]);
+
+        if ($was_present) {
+            $updated++;
         } else {
-            $missing[] = $c['key'];
+            $inserted++;
         }
     }
     $pdo->commit();
@@ -96,16 +135,16 @@ try {
     exit;
 }
 
-// Read updated_at for the (first) updated key so the UI can refresh it
+// Read updated_at of the first key for the UI to refresh
 $updated_at = null;
-if ($applied > 0) {
-    $stmt = $pdo->prepare('SELECT updated_at FROM content_blocks WHERE key = :k LIMIT 1');
-    $stmt->execute([':k' => $changes[0]['key']]);
-    $updated_at = $stmt->fetchColumn() ?: null;
-}
+$stmt = $pdo->prepare('SELECT updated_at FROM content_blocks WHERE key = :k LIMIT 1');
+$stmt->execute([':k' => $changes[0]['key']]);
+$updated_at = $stmt->fetchColumn() ?: null;
 
-$response = ['ok' => true, 'applied' => $applied, 'updated_at' => $updated_at];
-if ($missing !== []) {
-    $response['missing_keys'] = $missing;
-}
-echo json_encode($response);
+echo json_encode([
+    'ok'         => true,
+    'applied'    => $updated + $inserted,
+    'updated'    => $updated,
+    'inserted'   => $inserted,
+    'updated_at' => $updated_at,
+]);
