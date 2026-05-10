@@ -27,6 +27,21 @@ declare(strict_types=1);
 require_once __DIR__ . '/keys.php';
 require_once __DIR__ . '/log.php';
 require_once __DIR__ . '/ratelimit.php';
+require_once __DIR__ . '/../config.php';
+
+/**
+ * Resolve the configured default provider, falling back to the first
+ * entry in GUA_AI_PROVIDERS if .env's value is invalid. Phase 11/13
+ * call this when no per-tool override is set.
+ */
+function ai_default_provider(): string
+{
+    $p = defined('GUA_AI_DEFAULT_PROVIDER') ? GUA_AI_DEFAULT_PROVIDER : '';
+    if (in_array($p, GUA_AI_PROVIDERS, true)) {
+        return $p;
+    }
+    return GUA_AI_PROVIDERS[0];
+}
 
 /**
  * @param string  $provider  one of GUA_AI_PROVIDERS

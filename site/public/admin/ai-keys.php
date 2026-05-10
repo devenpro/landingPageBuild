@@ -15,8 +15,11 @@ declare(strict_types=1);
 require __DIR__ . '/../../../core/lib/bootstrap.php';
 require __DIR__ . '/_layout.php';
 require_once __DIR__ . '/../../../core/lib/ai/keys.php';
+require_once __DIR__ . '/../../../core/lib/ai/client.php';
 
 auth_require_login();
+
+$default_provider = ai_default_provider();
 
 // Master-key health check: surface any config error in a banner, not a 500.
 $master_key_ok = false;
@@ -38,8 +41,12 @@ admin_head('AI keys', 'ai_keys');
         <span class="text-sm text-ink-500"><?= count($rows) ?> stored</span>
     </div>
     <p class="mt-2 text-ink-600">
-        Bring-your-own keys for Gemini and OpenRouter. Stored encrypted with libsodium.
+        Bring-your-own keys for HuggingFace, Gemini, and OpenRouter. Stored encrypted with libsodium.
         The site decrypts in memory on each call and never echoes plaintext back to the browser.
+    </p>
+    <p class="mt-2 text-sm text-ink-500">
+        Default provider: <code class="rounded bg-ink-100 px-1.5 py-0.5 text-ink-800"><?= e($default_provider) ?></code>
+        <span class="text-ink-400">— change via <code>AI_DEFAULT_PROVIDER</code> in <code>.env</code>.</span>
     </p>
 
     <?php if (!$master_key_ok): ?>
@@ -103,7 +110,9 @@ admin_head('AI keys', 'ai_keys');
                         <select name="provider" required
                                 class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
                             <?php foreach (GUA_AI_PROVIDERS as $p): ?>
-                                <option value="<?= e($p) ?>"><?= e($p) ?></option>
+                                <option value="<?= e($p) ?>" <?= $p === $default_provider ? 'selected' : '' ?>>
+                                    <?= e($p) ?><?= $p === $default_provider ? ' (default)' : '' ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </label>
