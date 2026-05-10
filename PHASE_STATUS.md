@@ -18,8 +18,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 9 | Inline editing on the public page | ✅ | [#10](https://github.com/devenpro/landingPageBuild/pull/10) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 10 | AI key management (BYO + libsodium) + provider abstraction (HuggingFace, Gemini, OpenRouter) | ✅ | [#12](https://github.com/devenpro/landingPageBuild/pull/12) + [#13](https://github.com/devenpro/landingPageBuild/pull/13) | merged into `main` |
 | 11 | Admin AI tools — page suggestions, AI page generation | ✅ | [#14](https://github.com/devenpro/landingPageBuild/pull/14) | merged into `main` |
-| 12 | Media library + uploads UI | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
-| 13 | Frontend AI features — chatbot widget + rate limiting | ⏳ | — | — |
+| 12 | Media library + uploads UI | ✅ | [#15](https://github.com/devenpro/landingPageBuild/pull/15) | merged into `main` |
+| 13 | Frontend AI features — chatbot widget + rate limiting | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
 | 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | ⏳ | — | — |
 | 15 | Launch — DNS, final QA, content entry | ⏳ | — | — |
 
@@ -149,15 +149,17 @@ Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11]
 - `/api/ai/generate.php` — admin POST → draft `pages` row + page-scoped `content_blocks` rows in one transaction; slug conflicts resolve via `-2`/`-3` suffix; `meta_json` records provider, model, tokens, brief excerpt, admin user, timestamp
 - Verified live with Gemini: 7 contextually relevant suggestions for an SEO-agency brief; full-page generation produced 24 content_blocks with correct types and contextual copy
 
+### Phase 12 — Media library + upload UI ✅ ([#15](https://github.com/devenpro/landingPageBuild/pull/15))
+
+- `/api/upload.php` — admin-only multipart POST. MIME via `finfo_file` (server-side, ignores client-supplied type), MIME↔extension allowlist, size cap by kind, generated filenames (`<unix>-<rand>-<safe-orig>.<ext>`), atomic move + DB insert with rollback
+- `/api/media.php` — admin GET (list, optional `?kind` filter, `?limit` up to 500) + DELETE (row + on-disk file together, realpath-checked)
+- `/admin/media.php` — gallery grid (200-cap), inline upload form, copy-URL, delete with toast feedback
+- `/admin/content.php` — image- and video-typed rows now have a "Browse media" button + `<dialog>`-based picker modal that lazy-loads the gallery filtered by kind and fills the input on click
+- Verified live: PHP-as-PNG attack rejected by finfo; MIME/ext mismatch rejected; valid PNG + SVG round-tripped end-to-end
+
 ## What each pending phase will deliver
 
-### Phase 12 — Media library + upload UI 🚧 (in flight)
-
-- `/admin/media.php` — gallery with thumbnails, delete
-- `/api/upload.php` — already partially designed; finalises MIME whitelist, finfo verification, sanitised filenames, size caps
-- Image picker integrated into content editor (replaces the URL text input for `image`-type blocks)
-
-### Phase 13 — Frontend chatbot
+### Phase 13 — Frontend chatbot 🚧 (in flight)
 
 - Floating widget on the public site
 - `/api/chat.php` — rate-limited (per-IP + daily global cap), uses admin's stored keys

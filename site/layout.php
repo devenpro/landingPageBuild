@@ -141,6 +141,10 @@ function layout_foot(): void
 </div>
 <script src="/assets/js/editor.js" defer></script>
 <?php endif; ?>
+
+<?php if (defined('GUA_AI_CHAT_ENABLED') && GUA_AI_CHAT_ENABLED): ?>
+<script src="/assets/js/chat-widget.js" defer></script>
+<?php endif; ?>
 </body>
 </html>
 <?php
