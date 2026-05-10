@@ -1,326 +1,299 @@
-# Go Ultra AI — Landing Page Build Brief (for Claude Code) — v3
-> **Stack pivoted to PHP 8 + SQLite + vanilla JS** for cPanel hosting. No Node, no build step, no SaaS dependencies. Inline editing and webhook form remain as in v2.
+# Go Ultra AI — Build Brief (v4)
+
+> **Status:** v4 supersedes the original v3 single-tenant landing-page brief. The v3 scope (one landing page with inline editing) was expanded mid-build into a self-hosted multi-page CMS with optional AI integration. v3 is preserved in git history if anyone needs to consult the original scope. **This file is the source of truth.**
+
+For agent / mobile workflow conventions, read [AGENTS.md](AGENTS.md). For per-phase status and PR links, read [PHASE_STATUS.md](PHASE_STATUS.md). For deploy procedures, read [SETUP_GUIDE.md](SETUP_GUIDE.md). For the multi-site model, read [MULTI_SITE.md](MULTI_SITE.md). For AI feature design, read [AI_GUIDE.md](AI_GUIDE.md).
+
 ---
-## 1. Project Overview
-Build a high-conversion landing page for **Go Ultra AI**, a sub-product of **CreatiSoul LLP** (Bangalore-based AI content production agency).
-The landing page lives on a **subdomain** (e.g. `try.goultraai.com`) hosted on cPanel. The main brand site stays on Drupal. This codebase is intentionally simple — pure PHP and SQLite — so it deploys with a `git pull` on the server and edits via Claude Code from any device including mobile.
+
+## 1. Vision
+
+A self-hosted PHP + SQLite product for building marketing and content sites with optional AI assistance, designed for **freelancers, solo marketers, and small agencies** who manage multiple clients' web presence. Each site = one git clone of this repo, fully isolated, pinnable to a specific code version. The same codebase ships:
+
+- A multi-page public site (file-based critical pages + data-driven marketing pages)
+- An admin panel for managing pages, content, media, and form submissions
+- AI features (BYO API keys) that suggest pages, generate page content, and power a frontend chatbot
+
+The first deployment target is **`lpb.cswebserver.in`** (the marketing site for Go Ultra AI itself, a CreatiSoul LLP product). Subsequent sites will fork this repo and customise `site/`.
+
+### What we are NOT building
+
+- **Not a SaaS** — single-tenant per clone; no signup, billing, or app-level multi-tenancy
+- **Not a Webflow visual builder** — admin uses HTML forms + an inline editor, no drag-and-drop canvas
+- **Not a plugin/theme marketplace**
+- **Not multi-language at v1** — English / Hinglish only; i18n is a future-phase question
+
 ---
-## 2. Brand Context
-**Go Ultra AI** is an AI-powered content strategy and production platform built for freelancers, solo marketers, and small agencies who manage multiple clients' social media. We turn the chaos of content planning, ideation, and creative production into a structured workflow powered by AI.
-**Primary audience:**
-- Indian freelancers and agency operators (primary)
-- Global solo marketers (secondary)
-- Small in-house marketing teams handling 3–15 clients
-**Brand voice:** Confident, practical, slightly irreverent. Hinglish phrasing welcome where it lands naturally.
-**Core value proposition:** Plan, prompt, and produce social content for multiple clients in a fraction of the time — without losing the thinking that makes good content actually good.
-**What we are NOT:** generic Canva clone, post scheduler, enterprise SaaS.
+
+## 2. Audience and brand voice
+
+**Primary audience:** Indian freelancers and small agency operators managing 3-15 clients each.
+
+**Secondary:** global solo marketers; small in-house marketing teams.
+
+**Brand voice for the marketing site (Go Ultra AI itself):** confident, practical, slightly irreverent. Hinglish phrasing welcome where it lands naturally.
+
+**Core value prop (for the marketing site):** "Plan, prompt, and produce social content for multiple clients in a fraction of the time — without losing the thinking that makes good content actually good."
+
 ---
-## 3. Feature Set to Showcase
-1. **Multi-Client Social Media Calendar** — One calendar across clients, content pillars, campaign planning, posting cadence templates by industry.
-2. **AI Prompt Generation for Visuals** — Image prompts (Midjourney, Imagen, Nano Banana Pro), video prompts (VEO 3.1, Runway, Seedance), brand-consistent templates per client, first-frame/last-frame workflows.
-3. **Multi-Client Workspaces** — Separate brand kits per client, quick-switch, scoped asset libraries.
-4. **Post Planning & Copy** — Caption variations, hooks, CTAs, hashtags, carousel/Reel scripts in Hinglish or English.
-5. **Workflow Output** — Export-ready briefs, prompt-to-tool handoff, version history per post.
+
+## 3. Architecture
+
+### 3.1 Core vs site separation
+
+Two top-level directories with hard separation enforced by Claude Code workflow modes:
+
+- **`core/`** — versioned engine: bootstrap, config, DB, content getters, helpers, auth, CSRF, page router, scripts, schema migrations. Theoretically reusable across sites; in practice each site clones the whole repo (`core/` + `site/`) so cores can drift between sites at the user's choice.
+- **`site/`** — per-site theme + content + admin + API endpoints. Sections, layouts, file-based pages, site-specific schema additions, public assets.
+
+### 3.2 Multi-site model
+
+Each site is its own clone of this repo. Sites are 100% isolated — own DB at `data/content.db`, own `.env`, own uploads, own admin user. Updating one site never affects another. Pinning per site is the natural consequence of git: each clone stays on whatever commit/tag it's checked out at until you explicitly upgrade.
+
+See [MULTI_SITE.md](MULTI_SITE.md) for fork/upgrade/pinning workflows.
+
+### 3.3 Workflow modes (Claude Code)
+
+Hard-enforced by a `PreToolUse` hook in `.claude/settings.json`:
+
+- **`/core-mode`** — writable: `core/**`, `.claude/**`, repo-root docs/configs. Read-only: `site/**`, `data/**`, `.env`.
+- **`/site-mode`** — writable: `site/**`, `data/**`, `.env`. Read-only: `core/**`, `.claude/**`, repo-root docs/configs.
+- **No mode set** — all writes blocked with a helpful message.
+
+The hook script is `.claude/scripts/check-mode.php`; mode marker is `.claude-mode` (gitignored).
+
 ---
-## 4. Technical Requirements
-### Stack
-- **PHP 8.1+** (cPanel default)
-- **SQLite 3** via PDO (file-based, lives in `data/` outside web root if host allows)
-- **Vanilla JS** for inline editing
-- **Tailwind CSS via CDN** (no build step) OR hand-rolled CSS — Claude Code's choice; recommend Tailwind CDN for speed of iteration
-- **Lucide icons via CDN** (icons referenced by name string in DB)
-- Self-hosted **Inter** font in `assets/fonts/`
-### Constraints (these matter)
-- **No Composer, no npm, no build step.** Files on disk = files in production.
-- **No external service dependencies** at runtime (n8n webhook is the only outbound call, and it's optional — submissions are saved locally too).
-- Must work on a standard cPanel shared host with PHP 8.1+, SQLite extension enabled (default), and `mod_rewrite` (default).
-- Total uncompressed source under 2 MB.
-### Repository structure
+
+## 4. Repo layout
+
 ```
-/
-├── public_html/                          ← cPanel deploy target
-│   ├── index.php                         ← Landing page (renders from DB)
-│   ├── .htaccess                         ← URL rewriting + security headers
-│   ├── robots.txt
-│   ├── sitemap.xml
-│   ├── favicon.svg
-│   ├── og-image.jpg
-│   ├── admin/
-│   │   ├── login.php
-│   │   └── logout.php
-│   ├── api/
-│   │   ├── content.php                   ← PATCH content blocks (auth required)
-│   │   ├── upload.php                    ← POST media file
-│   │   └── form.php                      ← POST waitlist form
-│   ├── assets/
-│   │   ├── css/
-│   │   │   └── styles.css                ← any custom CSS beyond Tailwind
-│   │   ├── js/
-│   │   │   ├── editor.js                 ← inline edit logic (loads only if logged in)
-│   │   │   ├── form.js                   ← form validation + submit
-│   │   │   └── motion.js                 ← scroll reveals
-│   │   ├── fonts/
-│   │   │   └── Inter-*.woff2
-│   │   └── icons/                        ← any custom SVGs
-│   └── uploads/                          ← user-uploaded media (writable, 0755)
-│       └── .htaccess                     ← block PHP execution here
-├── data/                                 ← OUTSIDE web root if possible
-│   ├── content.db                        ← SQLite database (writable, 0644)
-│   └── .htaccess                         ← deny all (in case it's inside web root)
-├── includes/                             ← OUTSIDE web root if possible
-│   ├── config.php                        ← env loader
-│   ├── db.php                            ← PDO connection + init
-│   ├── auth.php                          ← session + password verify
-│   ├── content.php                       ← content_blocks getters
-│   ├── helpers.php                       ← html escaping, slugify, etc.
-│   └── sections/                         ← rendered partials
-│       ├── navbar.php
-│       ├── hero.php
-│       ├── social_proof.php
-│       ├── features.php
-│       ├── how_it_works.php
-│       ├── use_cases.php
-│       ├── product_demo.php
-│       ├── faq.php
-│       ├── final_cta.php
-│       └── footer.php
-├── migrations/
-│   ├── 0001_init.sql
-│   └── 0002_seed.sql
-├── scripts/
-│   ├── migrate.php                       ← run all .sql files in migrations/
-│   └── seed_admin.php                    ← create admin user with hashed password
+landingPageBuild/                       single git repo, one clone per site
+│
+├── core/                               versioned engine (touched in /core-mode)
+│   ├── VERSION                         "1.0.0" — pinning reference
+│   ├── lib/
+│   │   ├── bootstrap.php               single entry: requires everything below
+│   │   ├── config.php                  .env loader + path resolution
+│   │   ├── db.php                      memoized PDO (WAL + FK)
+│   │   ├── content.php                 c() / c_list() / c_type() getters
+│   │   ├── csrf.php                    session-bound CSRF tokens
+│   │   ├── auth.php                    login, logout, lockout, current_user
+│   │   ├── pages.php                   route_request, get_page_by_slug, render_page
+│   │   ├── pages_data_driven_placeholder.php   503 stub until Phase 8
+│   │   └── helpers.php                 e() / slugify() / now_iso() / json_safe()
+│   ├── scripts/
+│   │   ├── migrate.php                 scans BOTH core/migrations/ and site/migrations/
+│   │   ├── seed_admin.php              CLI bcrypt admin upsert
+│   │   └── dev-router.php              router for php -S (mimics mod_rewrite)
+│   └── migrations/
+│       ├── 0001_init.sql               admin_users, content_blocks, media_assets,
+│       │                                login_attempts, form_submissions
+│       └── 0002_pages.sql              pages
+│
+├── site/                               per-site theme + content (touched in /site-mode)
+│   ├── public/                         doc root — point cPanel here
+│   │   ├── index.php                   front controller (calls route_request)
+│   │   ├── .htaccess                   HTTPS, rewrite-to-index, deny rules, cache TTLs
+│   │   ├── favicon.svg, robots.txt, sitemap.xml
+│   │   ├── admin/
+│   │   │   ├── _layout.php             admin chrome (head, nav, foot helpers)
+│   │   │   ├── login.php
+│   │   │   ├── logout.php
+│   │   │   ├── dashboard.php
+│   │   │   ├── content.php             content_blocks editor
+│   │   │   └── forms.php               waitlist submissions inbox
+│   │   ├── api/
+│   │   │   ├── form.php                public POST endpoint for the waitlist
+│   │   │   └── content.php             admin-only PATCH for content_blocks
+│   │   ├── assets/
+│   │   │   ├── css/styles.css
+│   │   │   ├── fonts/InterVariable.woff2
+│   │   │   ├── js/{form.js, admin.js}
+│   │   │   └── placeholders/{hero,demo}-placeholder.svg
+│   │   └── uploads/                    runtime media (gitignored)
+│   ├── pages/                          file-based pages
+│   │   ├── home.php
+│   │   └── 404.php
+│   ├── sections/                       reusable section partials (10 today)
+│   ├── layout.php                      head/foot, accepts ?array $page for SEO override
+│   └── migrations/
+│       ├── 0001_seed.sql               ~85 content keys for the marketing site
+│       ├── 0002_pages_seed.sql         home + 404 page rows
+│       └── 0003_form_seed.sql          18 form.* labels and option lists
+│
+├── data/                               per-site SQLite DB (gitignored)
+├── .env                                per-site config (gitignored)
 ├── .env.example
 ├── .gitignore
-├── .cpanel.yml                           ← cPanel auto-deploy script
-├── BUILD_BRIEF.md
-├── SETUP_GUIDE.md
-└── README.md
+├── .cpanel.yml                         deploy hook (just runs migrate)
+├── .claude/                            workflow modes
+│   ├── settings.json
+│   ├── commands/{core-mode,site-mode}.md
+│   └── scripts/check-mode.php
+├── .claude-mode                        gitignored — current mode marker
+├── README.md, BUILD_BRIEF.md (this file), MULTI_SITE.md
+├── SETUP_GUIDE.md, AGENTS.md, PHASE_STATUS.md, AI_GUIDE.md
 ```
-> If the host doesn't allow files outside `public_html/`, place `data/` and `includes/` inside `public_html/` and rely on `.htaccess` deny rules. Claude Code should detect host constraints during setup and adapt.
-### .htaccess essentials (root)
-- Rewrite all to `index.php` for clean URLs (only `/admin/login`, `/api/*`, and asset paths bypass)
-- Force HTTPS
-- Security headers: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Content-Security-Policy` (loose enough for Tailwind CDN + Lucide)
-- Deny access to `.env`, `.git`, `*.md`, `migrations/`, `data/`
-### .htaccess for `uploads/`
-```
-php_flag engine off
-<FilesMatch "\.(php|phtml|phar|pl|py|cgi|sh)$">
-  Require all denied
-</FilesMatch>
-```
+
 ---
-## 5. Sections (build in this order)
-1. **Navbar** — Logo, Features link, CTA → form. Footer carries the `/admin/login` link discreetly.
-2. **Hero** — Headline, subheadline, primary CTA, hero visual.
-3. **Social Proof Strip** — Placeholder OK for v1.
-4. **Features Grid** — 5–6 cards (icon + title + 1-line description).
-5. **How It Works** — 4 steps: *Add client → Plan calendar → Generate prompts → Export brief*.
-6. **Use Cases** — Solo freelancer, Small agency owner, In-house marketer.
-7. **Product Demo** — Image or short looping video.
-8. **FAQ** — 5–7 objections.
-9. **Final CTA + Waitlist Form**.
-10. **Footer** — Links, "A CreatiSoul LLP product", social, legal, admin login link.
-Every section is a PHP partial under `includes/sections/` that fetches its content via `getContent('section.key')` and renders `<editable>` wrappers around editable values.
----
-## 6. Admin Login + Inline Editing
-### 6.1 Auth
-- Single admin row in `admin_users` table (email + bcrypt password hash)
-- Login page: `/admin/login`
-- On success: PHP session with `$_SESSION['admin_user_id']`
-- Cookie: `HttpOnly`, `Secure`, `SameSite=Strict`
-- Session timeout: 8 hours of inactivity
-- CSRF token on every state-changing request (login, save, upload, logout)
-- Logout: destroys session, redirects to `/`
-- Brute-force protection: lockout after 5 failed attempts in 10 minutes (track in DB by IP)
-### 6.2 Edit mode
-When `$_SESSION['admin_user_id']` is set, the public landing page renders with edit mode on. No separate dashboard.
-**EditModeBar** (fixed top, only when logged in):
-- "Edit mode: ON" indicator
-- **Save** button (sends batched changes)
-- **Discard** button (reloads page)
-- **Logout** button
-- Unsaved changes counter
-The `editor.js` file is `<script>`-included **only when the user is logged in** (PHP conditional). Logged-out visitors never download it.
-### 6.3 What's editable
-| Element | Wrapper class | Behavior in edit mode |
+
+## 5. Data model
+
+### Shipped tables
+
+| Table | Purpose | Phase |
 |---|---|---|
-| Headlines, body copy, button text, FAQ Q&A | `<span data-edit="text" data-key="hero.headline">` | `contentEditable=true` on click, blur to stage |
-| Hero image, demo image | `<img data-edit="image" data-key="hero.image">` | Click → upload modal |
-| Demo video | `<video data-edit="video" data-key="demo.video">` | Click → upload modal |
-| Feature card icons, step icons | `<i data-edit="icon" data-key="feature.1.icon">` | Click → searchable Lucide picker |
-All changes staged in `window.pendingChanges` until Save is clicked. Save sends one `PATCH /api/content.php` with batched payload + CSRF token.
-### 6.4 Database schema (`migrations/0001_init.sql`)
-```sql
-CREATE TABLE IF NOT EXISTS content_blocks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  key TEXT UNIQUE NOT NULL,
-  value TEXT NOT NULL,                       -- plain text, URL, icon name, or JSON-encoded list
-  type TEXT NOT NULL CHECK(type IN ('text','image','video','icon','list','seo')),
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_by INTEGER REFERENCES admin_users(id)
-);
-CREATE INDEX IF NOT EXISTS idx_content_blocks_key ON content_blocks(key);
-CREATE TABLE IF NOT EXISTS media_assets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  filename TEXT NOT NULL UNIQUE,             -- stored name e.g. "1715347200_hero.jpg"
-  original_name TEXT NOT NULL,
-  mime_type TEXT NOT NULL,
-  size_bytes INTEGER NOT NULL,
-  kind TEXT NOT NULL CHECK(kind IN ('image','video')),
-  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  uploaded_by INTEGER REFERENCES admin_users(id)
-);
-CREATE TABLE IF NOT EXISTS admin_users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS login_attempts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ip_address TEXT NOT NULL,
-  email TEXT,
-  success INTEGER NOT NULL,
-  attempted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address, attempted_at);
-CREATE TABLE IF NOT EXISTS form_submissions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  full_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  role TEXT NOT NULL,
-  clients_managed TEXT,
-  bottleneck TEXT,
-  user_agent TEXT,
-  referrer TEXT,
-  ip_address TEXT,
-  webhook_status TEXT,                       -- "sent" | "failed" | "skipped"
-  webhook_response TEXT,
-  submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-### 6.5 Seed data (`migrations/0002_seed.sql`)
-Insert one row per `content_blocks.key` used anywhere on the page. Use realistic placeholder copy in the brand voice. Examples:
-- `hero.headline` — "Plan a week of social content for every client. In an hour."
-- `hero.subheadline` — "Go Ultra AI is the brain behind your social calendar..."
-- `hero.cta_label` — "Get early access"
-- `hero.image` — `/uploads/hero-placeholder.jpg`
-- `feature.1.icon` — `calendar-days`
-- `feature.1.title` — "Multi-Client Calendar"
-- `feature.1.body` — "..."
-(Cover all sections; Claude Code should produce the full seed file based on the section list above.)
-### 6.6 Upload handling (`api/upload.php`)
-- Auth required (session check + CSRF token)
-- Accept `multipart/form-data` with one file per request
-- **Whitelist** MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/svg+xml`, `video/mp4`, `video/webm`
-- **Max size:** 5 MB for images, 50 MB for videos (configurable via `.env`)
-- Verify MIME type by reading file header (`finfo_file`), not by trusting the client
-- Sanitize filename: lowercase, `[a-z0-9._-]` only, prefix with timestamp
-- Save to `public_html/uploads/`
-- Insert row into `media_assets`
-- Return JSON: `{ "url": "/uploads/1715347200_hero.jpg", "id": 42 }`
-- On error, return JSON `{ "error": "message" }` with appropriate status code
-### 6.7 Editing UX
-- **Hover state in edit mode:** dashed violet outline + small pencil icon (CSS-only)
-- **Active edit:** solid violet border
-- **Image/video upload:** progress bar, preview after upload, undo before save
-- **Keyboard:** `Esc` exits current edit; `Cmd/Ctrl+S` triggers Save
-- **Mobile editing:** Text editing works on phone; image upload prefers desktop but should function
-- **Optimistic UI:** show changes immediately, rollback + toast on save failure
+| `_migrations` | Tracks applied migrations by `(source, name)` (`source` = `'core'` or `'site'`) | 1 |
+| `admin_users` | id, email (unique), password_hash, created_at | 1 |
+| `content_blocks` | key (unique), value, type (`text`/`image`/`video`/`icon`/`list`/`seo`), updated_at, updated_by | 1 |
+| `media_assets` | filename (unique), original_name, mime_type, size_bytes, kind (`image`/`video`), uploaded_at, uploaded_by | 1 (table only; upload UI in Phase 12) |
+| `login_attempts` | ip_address, email, success, attempted_at — drives brute-force lockout | 1 |
+| `form_submissions` | full_name, email, phone, role, clients_managed, bottleneck, UA / referer / IP, webhook_status (`sent`/`failed`/`skipped`), webhook_response, submitted_at | 1 (table) + 5 (writes) |
+| `pages` | slug (unique), title, status (`draft`/`published`/`archived`), is_file_based, file_path, layout, sections_json, meta_json, seo_*, created_at, updated_at | 4 |
+
+### Planned tables
+
+| Table | Purpose | Phase |
+|---|---|---|
+| `ai_provider_keys` | provider, label, encrypted_key (libsodium secretbox), nonce, last_used_at | 10 |
+| `ai_calls` | provider, model, prompt_template, tokens_in/out, cost_estimate_usd, success, error_msg, caller, caller_ip, called_at | 10 |
+| `ai_chat_messages` | session_id, role, content, created_at — frontend chat persistence (toggleable) | 13 |
+
 ---
-## 7. Public Form (`api/form.php`)
-**Fields** (HTML form posts to same endpoint):
-- Full Name (required, text, max 100)
-- Email (required, email, max 150)
-- Phone / WhatsApp (required, with country code, default `+91`)
-- Role (required, dropdown: *Freelancer / Agency Owner / In-house Marketer / Other*)
-- Clients managed (optional, dropdown: *1–3 / 4–10 / 10+ / Just exploring*)
-- Biggest content bottleneck (optional, textarea, max 500)
-- Honeypot field (hidden, must be empty)
-- CSRF token
-**Server behavior:**
-1. Validate CSRF token
-2. Reject if honeypot non-empty (return generic success to confuse bots)
-3. Validate fields server-side (don't trust client)
-4. Insert into `form_submissions` immediately (so we don't lose data)
-5. Attempt POST to `WEBHOOK_URL` from `.env`:
-   ```json
-   {
-     "full_name": "...",
-     "email": "...",
-     "phone": "+91...",
-     "role": "...",
-     "clients_managed": "...",
-     "bottleneck": "...",
-     "submitted_at": "2026-05-10T10:30:00Z",
-     "source": "go-ultra-ai-landing",
-     "user_agent": "...",
-     "referrer": "..."
-   }
-   ```
-6. Update `webhook_status` and `webhook_response` columns based on outcome
-7. Return JSON success regardless of webhook outcome (we have the lead in DB)
-8. Client-side: replace form with success message + WhatsApp/Calendly CTA
-**Client validation:** `assets/js/form.js` — vanilla JS, no library. Validate on blur and on submit. Disable button + show spinner on submit. Use `fetch()` with JSON, fall back to standard form POST if JS disabled.
-**Webhook URL:** stored in `.env` as `WEBHOOK_URL`. Replace `[YOUR_N8N_WEBHOOK_URL]` during setup.
+
+## 6. Routing model
+
+`site/public/index.php` is a 4-line front controller: `require core/lib/bootstrap.php; route_request();`.
+
+`route_request()` (in `core/lib/pages.php`):
+
+1. Parse `REQUEST_URI` → slug (`/` → `home`; `/services/seo-bangalore` → `services/seo-bangalore`)
+2. Lookup `pages` row by slug, `status = 'published'`
+3. **If `is_file_based = 1`**: `realpath`-validate that `file_path` resolves under `site/pages/`, then `require` it
+4. **Else (data-driven)**: Phase 8 implements; for now requires the placeholder
+5. **No row found**: `http_response_code(404)` + serve the `404` page (also a published `pages` row)
+
+`site/public/.htaccess` rewrites all non-file URLs to `index.php`. Apache mod_rewrite handles this in production; `core/scripts/dev-router.php` does the equivalent for local `php -S`.
+
+For local-SEO programmatic pages: AI generation populates `pages` rows with descriptive slugs (`services/seo-bangalore`) and JSON-encoded section content. Admin reviews, flips status to `published`. Phase 8 ships the data-driven render path; Phase 11 ships the AI generator.
+
 ---
-## 8. Performance, SEO, Accessibility
-- Lighthouse ≥ 95 on Performance, Accessibility, Best Practices, SEO (logged-out, mobile)
-- Open Graph + Twitter Card meta in `<head>` (values from `content_blocks` with `seo.*` keys, also editable)
-- JSON-LD: `Organization` + `WebSite` + `Product` (in `<head>`)
-- `sitemap.xml` and `robots.txt` static files
-- Self-host Inter font; preload the weights actually used
-- Tailwind CDN: use the JIT script for production-friendly output, OR write critical CSS inline + load Tailwind only in dev (Claude Code's call)
-- Lazy-load below-the-fold images with `loading="lazy"`
-- All images served as WebP where possible (with JPEG fallback in `<picture>`)
-- Total page weight (initial) under 500 KB excluding hero media
-- `editor.js` (~10 KB) loads ONLY when admin session is active
-**Accessibility:**
-- Semantic HTML throughout
-- Full keyboard navigation
-- Visible focus states
-- WCAG AA contrast minimum
-- `aria-label` on icon-only buttons
-- Form errors via `aria-live="polite"`
+
+## 7. Constraints
+
+- **PHP 8.1+** (`pdo_sqlite`, `fileinfo`, `session`, `openssl`, `curl`, `sodium` extensions)
+- **SQLite 3** via PDO; no other DB
+- **Vanilla JS only**; no React, no Vue, no build step
+- **Tailwind via Play CDN** through Phase 13; hand-built `styles.css` in Phase 14
+- **Lucide icons via CDN** (icons referenced by name in DB)
+- **Self-hosted Inter font** at `site/public/assets/fonts/InterVariable.woff2`
+- **No Composer, no npm.** Files on disk = files in production.
+- **Total source under 2 MB** uncompressed
+- **cPanel-deployable** via Git Version Control with `.cpanel.yml` hook
+- **No external runtime services** other than: outbound webhook to user's n8n / Zapier (optional, set `WEBHOOK_URL` in `.env`); AI provider APIs (Phases 10-13, BYO keys)
+
 ---
-## 9. Design Direction
-- **Aesthetic:** Modern, AI-confident, warm. No cold-blue-gradient AI cliché.
-- **Palette:** Bold violet accent (`#7C3AED` family) + neutral grays + near-white background. Avoid default dark mode.
-- **Type:** Inter (or Geist if licensing allows). Big headline scale (≥60px desktop), generous line-height.
-- **Visuals:** Real product UI screenshots > generic AI art. **No robot/brain stock imagery.**
-- **Motion:** Subtle scroll reveals, gentle hover lifts. Respect `prefers-reduced-motion`.
-- **Mobile:** Mobile-first. Hero readable in one phone screen. Tap targets 44px+.
-- **Edit mode visual:** Dashed violet outline + pencil icon on hover.
+
+## 8. Phased delivery
+
+| # | Phase | Status | PR |
+|---|---|---|---|
+| 1 | Scaffolding (DB, config, migrations, hello-world) | ✅ merged | #1 |
+| 2 | Static landing page (single-tenant — *superseded*) | ⏸️ closed | #2 |
+| 3 | Architecture reset — multi-site `core/`+`site/` + workflow modes | 🟡 open | #3 |
+| 4 | Pages table + hybrid routing + Home as file-based page | 🟡 open | #4 |
+| 5 | Public waitlist form + optional outbound webhook | 🟡 open | #5 |
+| 6 | Admin auth — login, logout, brute-force lockout | 🟡 open | #6 |
+| 7 | Admin panel base + content_blocks editor + forms inbox | 🟡 open | #7 |
+| 7.5 | Documentation refresh (this PR) | 🟡 in flight | #8 |
+| 8 | Pages CRUD UI + data-driven page renderer | pending | — |
+| 9 | Inline editing on the public page | pending | — |
+| 10 | AI key management (BYO + libsodium encryption) + provider abstraction (Gemini, OpenRouter) | pending | — |
+| 11 | Admin AI tools — page suggestions, AI page generation | pending | — |
+| 12 | Media library + uploads UI | pending | — |
+| 13 | Frontend AI features — chatbot widget + rate limiting | pending | — |
+| 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | pending | — |
+| 15 | Launch — DNS, final QA, content entry | pending | — |
+
+See [PHASE_STATUS.md](PHASE_STATUS.md) for the live tracker (per-phase deferrals, gotchas caught, and what each PR shipped).
+
 ---
-## 10. Configuration (`.env` / `.env.example`)
-See `.env.example` in the repo root for the canonical template. Key changes from earlier drafts:
-- `CSRF_SECRET` removed — CSRF tokens are session-bound and rotated on login.
-- `INCLUDES_PATH` added so production can resolve outside-webroot includes.
-- When `APP_ENV=local`, `DB_PATH` and `INCLUDES_PATH` are auto-resolved as siblings of `public_html/` regardless of what the .env says.
+
+## 9. Working style
+
+- **One PR per phase.** Stacked PRs are fine when phases build on each other; rebase or close if merges happen out of order.
+- **Commit messages**: `Phase N: <title>` then a body with **why**, **what changed**, **verified locally**, and **out of scope**.
+- **Mode-gated edits**: `/core-mode` for engine work, `/site-mode` for theme/content. Don't shell out (Bash redirection) to bypass the hook.
+- **All PHP files** start with a top-level comment explaining purpose.
+- **`// TODO: VERIFY` comments** wherever you're making an assumption the user should check.
+- **All DB writes** via PDO prepared statements, named bound params. No string concatenation into SQL.
+- **All user input escaped on output** via `e()` (htmlspecialchars wrapper).
+- **All file paths from user input** normalised with `realpath()` and prefix-checked against an allow-list.
+- **Don't over-engineer.** Single admin per site. No roles, no draft/publish split for content_blocks (saves go straight live).
+
 ---
-## 11. cPanel Deploy Script (`.cpanel.yml`)
-See `.cpanel.yml` in repo root. Username `cswebserver` and deploy path `/home/cswebserver/public_html/try/` are pre-filled for this host.
+
+## 10. Configuration (`.env`)
+
+See `.env.example` for the canonical template. Per-site, gitignored, lives at repo root. Key vars:
+
+- `APP_ENV` — `local` | `production`
+- `APP_URL` — public URL of the site (no trailing slash)
+- `SITE_NAME` — used in titles
+- `ADMIN_EMAIL` — `seed_admin.php` writes the row keyed by this
+- `SESSION_LIFETIME_HOURS` — default 8, sliding-window inactivity timeout
+- `WEBHOOK_URL` — optional outbound POST target for form submissions; blank = skipped
+- `WEBHOOK_TIMEOUT_SECONDS` — default 10
+- `MAX_IMAGE_BYTES` / `MAX_VIDEO_BYTES` — Phase 12 upload caps
+- `AI_KEYS_MASTER_KEY` — base64-encoded 32 bytes for libsodium encryption of stored AI provider keys (Phase 10+)
+- Path overrides (`CORE_PATH`, `SITE_PATH`, `DATA_PATH`, `DB_PATH`) — only set if you want files outside the repo on a host that allows it
+
 ---
-## 12. Build Plan (Phased)
-**Phase 1 — Scaffolding** ✅
-**Phase 2 — Static sections** (next)
-**Phase 3 — Public form**
-**Phase 4 — Admin auth**
-**Phase 5 — Inline editing for text**
-**Phase 6 — Inline editing for media + icons**
-**Phase 7 — Polish**
-**Phase 8 — Launch**
+
+## 11. Performance, SEO, accessibility (target)
+
+- Lighthouse ≥ 95 on Performance / Accessibility / Best Practices / SEO (logged-out, mobile) — Phase 14 chases this
+- Open Graph + Twitter Card meta in `<head>` (sourced from `seo.*` content_blocks AND per-page `seo_*` columns)
+- JSON-LD `Organization` + `WebSite` + `Product` (Phase 14)
+- `sitemap.xml` regenerated from `pages` table (Phase 14)
+- Self-hosted Inter font with `preload` + `font-display: swap`
+- Lazy-load below-the-fold images
+- WCAG AA contrast minimum, semantic HTML, full keyboard navigation, visible focus states, `aria-live` for form errors
+
 ---
-## 13. Working Style
-- Commit early, commit often, clear messages
-- One PR per phase
-- **Don't over-engineer.** Single-user admin. No roles, no workflow, no draft/publish split — saves go straight live.
-- Every PHP file starts with a top-level comment explaining its purpose
-- `// TODO: VERIFY` comments where you're making assumptions I should check
-- Edit-mode JS must NOT load for logged-out visitors
-- All DB writes go through prepared statements (PDO with bound params) — no string concatenation
-- All user input escaped on output via `htmlspecialchars()` helper
-- All file paths normalized with `realpath()` and checked against allowed prefixes (no path traversal)
+
+## 12. Design direction
+
+- **Aesthetic:** modern, AI-confident, warm. No cold-blue-gradient AI cliché.
+- **Palette:** brand violet (`#7c3aed` family) + neutral inks (gray scale) + near-white background. Avoid default dark mode.
+- **Type:** Inter Variable. Big headline scale (≥60px desktop), generous line-height.
+- **Visuals:** real product UI screenshots > generic AI art. **No robot/brain stock imagery.**
+- **Motion:** subtle scroll reveals, gentle hover lifts. Respect `prefers-reduced-motion` (Phase 14).
+- **Mobile:** mobile-first. Hero readable in one phone screen. Tap targets 44 px+.
+- **Edit mode visual:** dashed violet outline + pencil icon on hover (Phase 9 inline editor).
+
+---
+
+## 13. References
+
+- [README.md](README.md) — quickstart and phase status
+- [SETUP_GUIDE.md](SETUP_GUIDE.md) — cPanel deploy walkthrough
+- [MULTI_SITE.md](MULTI_SITE.md) — multi-site / fork / pinning
+- [AGENTS.md](AGENTS.md) — operating manual for Claude Code and future agents
+- [AI_GUIDE.md](AI_GUIDE.md) — AI feature design (Phases 10-13)
+- [PHASE_STATUS.md](PHASE_STATUS.md) — live per-phase tracker
+
+---
+
+## 14. What changed since v3
+
+For anyone consulting v3 in git history:
+
+- **Scope expanded** from "single landing page with inline editing" to "multi-page CMS with AI integration and multi-site support"
+- **Layout reorganized** from `public_html/`-centric to `core/` + `site/` split
+- **Routing introduced** (`pages` table, front controller) — v3 had a static `index.php`
+- **AI features added** as Phases 10-13 (BYO keys, page generation, chatbot)
+- **Workflow modes added** for Claude Code (hooks-enforced)
+- **Phase plan grew** from 8 phases to 15
+
+If you find code that contradicts this brief, the brief is wrong — open a fix-it commit.
