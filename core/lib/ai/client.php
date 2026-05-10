@@ -44,6 +44,53 @@ function ai_default_provider(): string
 }
 
 /**
+ * Parse a model response that's supposed to be JSON. Strips ```json
+ * fences and surrounding prose if the model ignored a "no markdown"
+ * instruction (Gemini, in particular, will do this occasionally).
+ *
+ * Throws RuntimeException with a useful message on parse failure so
+ * callers can return 502/422 to the admin instead of silently failing.
+ *
+ * @return mixed The decoded JSON value (typically an associative array)
+ */
+function ai_parse_json(string $text)
+{
+    $t = trim($text);
+
+    // Strip a single leading/trailing markdown code fence pair.
+    if (preg_match('/^```(?:json)?\s*\n?(.*?)\n?```$/is', $t, $m)) {
+        $t = trim($m[1]);
+    }
+
+    // Some models wrap JSON in prose; try to find the first balanced { … }
+    // or [ … ] block. Cheap heuristic: pull from the first { or [ to the
+    // last matching } or ].
+    if ($t !== '' && $t[0] !== '{' && $t[0] !== '[') {
+        $first_brace = strpos($t, '{');
+        $first_brack = strpos($t, '[');
+        $start = $first_brace === false ? $first_brack
+            : ($first_brack === false ? $first_brace : min($first_brace, $first_brack));
+        if ($start !== false) {
+            $open  = $t[$start];
+            $close = $open === '{' ? '}' : ']';
+            $end   = strrpos($t, $close);
+            if ($end !== false && $end > $start) {
+                $t = substr($t, $start, $end - $start + 1);
+            }
+        }
+    }
+
+    $decoded = json_decode($t, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new RuntimeException(
+            'Model response was not valid JSON: ' . json_last_error_msg()
+            . '. First 200 chars: ' . substr($text, 0, 200)
+        );
+    }
+    return $decoded;
+}
+
+/**
  * @param string  $provider  one of GUA_AI_PROVIDERS
  * @param array   $messages  [{role: 'system'|'user'|'assistant', content: string}, ...]
  * @param array   $opts      {
