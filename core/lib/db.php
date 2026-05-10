@@ -1,7 +1,6 @@
 <?php
-// includes/db.php — memoized PDO connection to the SQLite content database.
-// Creates the parent directory on first call if missing (handy on first
-// production deploy before content.db has been generated).
+// core/lib/db.php — memoized PDO connection to the SQLite content database.
+// Creates the parent directory on first call if missing.
 
 declare(strict_types=1);
 

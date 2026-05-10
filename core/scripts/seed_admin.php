@@ -1,5 +1,5 @@
 <?php
-// scripts/seed_admin.php — create or update the single admin user.
+// core/scripts/seed_admin.php — create or update the single admin user.
 // Email is read from .env (ADMIN_EMAIL). Password is prompted (no echo on
 // POSIX; visible on Windows — flagged below). CLI only.
 
@@ -10,8 +10,7 @@ if (PHP_SAPI !== 'cli') {
     exit("CLI only.\n");
 }
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../lib/bootstrap.php';
 
 if (GUA_ADMIN_EMAIL === '') {
     fwrite(STDERR, "ADMIN_EMAIL is empty in .env\n");
@@ -20,8 +19,6 @@ if (GUA_ADMIN_EMAIL === '') {
 
 echo "Seeding admin: " . GUA_ADMIN_EMAIL . "\n";
 
-// Try to suppress echo on POSIX. On Windows the password will be visible —
-// acceptable trade-off; the prompt warns the user.
 $is_windows = stripos(PHP_OS_FAMILY, 'WIN') === 0;
 if (!$is_windows) {
     @system('stty -echo');

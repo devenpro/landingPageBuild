@@ -1,5 +1,6 @@
--- 0001_init.sql — initial schema for Go Ultra AI landing page.
+-- core/migrations/0001_init.sql — initial core schema.
 -- All tables are CREATE TABLE IF NOT EXISTS so the migration is safe to re-run.
+-- Phase 4 adds pages; Phase 10 adds ai_provider_keys / ai_calls; Phase 13 adds ai_chat_messages.
 
 CREATE TABLE IF NOT EXISTS admin_users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
