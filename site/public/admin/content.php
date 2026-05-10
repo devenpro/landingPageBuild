@@ -82,6 +82,13 @@ admin_head('Content', 'content');
                                         class="content-row-input w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
                                         value="<?= $value_for_attr ?>">
                                 <?php endif; ?>
+                                <?php if ($row['type'] === 'image' || $row['type'] === 'video'): ?>
+                                    <button type="button"
+                                            class="content-row-pick shrink-0 self-start rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-700 hover:border-brand-300 hover:bg-brand-50"
+                                            data-pick-kind="<?= e($row['type']) ?>">
+                                        Browse media
+                                    </button>
+                                <?php endif; ?>
                                 <button type="button"
                                         class="content-row-save shrink-0 self-start rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60">
                                     Save
@@ -92,7 +99,9 @@ admin_head('Content', 'content');
                             <?php elseif ($row['type'] === 'icon'): ?>
                                 <p class="mt-1.5 text-xs text-ink-400">Lucide icon name, e.g. <code>calendar-days</code> &mdash; see <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="underline">lucide.dev/icons</a></p>
                             <?php elseif ($row['type'] === 'image'): ?>
-                                <p class="mt-1.5 text-xs text-ink-400">Image URL or path. Phase 12 adds an upload picker.</p>
+                                <p class="mt-1.5 text-xs text-ink-400">Image URL or path — paste, or click <strong>Browse media</strong> to pick from <a href="/admin/media.php" class="underline">your library</a>.</p>
+                            <?php elseif ($row['type'] === 'video'): ?>
+                                <p class="mt-1.5 text-xs text-ink-400">Video URL or path — paste, or click <strong>Browse media</strong>.</p>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
@@ -100,5 +109,106 @@ admin_head('Content', 'content');
             </details>
         <?php endforeach; ?>
     </div>
+
+    <!-- Media picker modal — opened by .content-row-pick buttons. -->
+    <dialog id="media-picker"
+            class="w-[min(900px,92vw)] rounded-2xl border border-ink-100 bg-white p-0 shadow-2xl backdrop:bg-ink-900/40">
+        <header class="flex items-center justify-between border-b border-ink-100 px-5 py-3">
+            <h2 class="text-sm font-medium text-ink-700">Pick from media library</h2>
+            <button type="button" id="media-picker-close"
+                    class="rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs text-ink-700 hover:bg-ink-50">Close</button>
+        </header>
+        <div id="media-picker-grid" class="grid max-h-[70vh] grid-cols-2 gap-3 overflow-y-auto p-5 sm:grid-cols-3 lg:grid-cols-4">
+            <div class="col-span-full text-center text-sm text-ink-500">Loading…</div>
+        </div>
+    </dialog>
+
+    <script>
+    (function () {
+        'use strict';
+        const dialog = document.getElementById('media-picker');
+        const grid   = document.getElementById('media-picker-grid');
+        const closeBtn = document.getElementById('media-picker-close');
+        if (!dialog || !grid) return;
+
+        let activeInput = null;
+        let activeKind  = 'image';
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        async function openPicker(input, kind) {
+            activeInput = input;
+            activeKind  = kind || 'image';
+            grid.innerHTML = '<div class="col-span-full text-center text-sm text-ink-500">Loading…</div>';
+            if (typeof dialog.showModal === 'function') dialog.showModal();
+            else dialog.setAttribute('open', '');
+            try {
+                const res  = await fetch('/api/media.php?kind=' + encodeURIComponent(activeKind), {
+                    credentials: 'same-origin', headers: { 'Accept': 'application/json' },
+                });
+                const body = await res.json().catch(() => null);
+                if (!res.ok || !body || !body.ok) {
+                    grid.innerHTML = '<div class="col-span-full text-center text-sm text-red-700">' +
+                        escapeHtml((body && body.error) || ('HTTP ' + res.status)) + '</div>';
+                    return;
+                }
+                if (!body.items.length) {
+                    grid.innerHTML = '<div class="col-span-full p-6 text-center text-sm text-ink-500">' +
+                        'No ' + activeKind + 's uploaded yet. ' +
+                        '<a href="/admin/media.php" class="underline">Upload one</a> and come back.' +
+                        '</div>';
+                    return;
+                }
+                grid.innerHTML = body.items.map(item => {
+                    const url = item.url;
+                    const thumb = item.kind === 'image'
+                        ? '<img src="' + escapeHtml(url) + '" alt="" loading="lazy" class="h-full w-full object-cover">'
+                        : '<div class="grid h-full w-full place-items-center text-ink-400 text-xs uppercase">' + escapeHtml(item.kind) + '</div>';
+                    return '<button type="button" class="picker-pick group flex flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left hover:border-brand-300" data-url="' + escapeHtml(url) + '">' +
+                        '<div class="aspect-square w-full bg-ink-50">' + thumb + '</div>' +
+                        '<div class="px-2 py-1.5 text-[11px] truncate text-ink-700" title="' + escapeHtml(item.original_name) + '">' + escapeHtml(item.original_name) + '</div>' +
+                        '</button>';
+                }).join('');
+                grid.querySelectorAll('.picker-pick').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const url = btn.getAttribute('data-url') || '';
+                        if (activeInput) {
+                            activeInput.value = url;
+                            activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            activeInput.focus();
+                        }
+                        if (typeof dialog.close === 'function') dialog.close();
+                        else dialog.removeAttribute('open');
+                    });
+                });
+            } catch (err) {
+                grid.innerHTML = '<div class="col-span-full text-center text-sm text-red-700">Network error: ' + escapeHtml(err.message) + '</div>';
+            }
+        }
+
+        document.querySelectorAll('.content-row-pick').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const row   = btn.closest('.content-row');
+                const input = row?.querySelector('.content-row-input');
+                if (!input) return;
+                openPicker(input, btn.getAttribute('data-pick-kind') || 'image');
+            });
+        });
+
+        closeBtn?.addEventListener('click', () => {
+            if (typeof dialog.close === 'function') dialog.close();
+            else dialog.removeAttribute('open');
+        });
+        // Click backdrop to close.
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                if (typeof dialog.close === 'function') dialog.close();
+                else dialog.removeAttribute('open');
+            }
+        });
+    })();
+    </script>
 <?php
 admin_foot();

@@ -17,8 +17,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 8 | Pages CRUD UI + data-driven page renderer | ✅ | [#9](https://github.com/devenpro/landingPageBuild/pull/9) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 9 | Inline editing on the public page | ✅ | [#10](https://github.com/devenpro/landingPageBuild/pull/10) | merged into `main` via [#11](https://github.com/devenpro/landingPageBuild/pull/11) |
 | 10 | AI key management (BYO + libsodium) + provider abstraction (HuggingFace, Gemini, OpenRouter) | ✅ | [#12](https://github.com/devenpro/landingPageBuild/pull/12) + [#13](https://github.com/devenpro/landingPageBuild/pull/13) | merged into `main` |
-| 11 | Admin AI tools — page suggestions, AI page generation | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
-| 12 | Media library + uploads UI | ⏳ | — | — |
+| 11 | Admin AI tools — page suggestions, AI page generation | ✅ | [#14](https://github.com/devenpro/landingPageBuild/pull/14) | merged into `main` |
+| 12 | Media library + uploads UI | 🚧 | this branch | `claude/review-next-tasks-tmBYG` |
 | 13 | Frontend AI features — chatbot widget + rate limiting | ⏳ | — | — |
 | 14 | Polish — motion, SEO, JSON-LD, a11y, Lighthouse, Tailwind compile-down, CSV export, no-JS form fallback | ⏳ | — | — |
 | 15 | Launch — DNS, final QA, content entry | ⏳ | — | — |
@@ -140,15 +140,18 @@ Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11]
 
 ---
 
+### Phase 11 — Admin AI tools ✅ ([#14](https://github.com/devenpro/landingPageBuild/pull/14))
+
+- `/admin/ai.php` — two-card UI: Suggest pages + Generate page (with default-provider banner and master-key/key-on-file warnings)
+- `core/lib/ai/prompts/{suggest_pages,generate_page}.php` — prompt templates with strict JSON output contracts
+- `core/lib/ai/client.php` gains `ai_parse_json()` for tolerant JSON extraction (strips markdown fences if models add them)
+- `/api/ai/suggest.php` — admin POST → list of suggestions
+- `/api/ai/generate.php` — admin POST → draft `pages` row + page-scoped `content_blocks` rows in one transaction; slug conflicts resolve via `-2`/`-3` suffix; `meta_json` records provider, model, tokens, brief excerpt, admin user, timestamp
+- Verified live with Gemini: 7 contextually relevant suggestions for an SEO-agency brief; full-page generation produced 24 content_blocks with correct types and contextual copy
+
 ## What each pending phase will deliver
 
-### Phase 11 — Admin AI tools 🚧 (in flight)
-
-- `/admin/ai.php` — UI for "suggest pages" and "generate page from brief"
-- `core/lib/ai/prompts/{suggest_pages,generate_page}.php` — prompt templates
-- Generated pages land as `pages` rows with `status='draft'`, `meta_json` recording the generation source
-
-### Phase 12 — Media library + upload UI
+### Phase 12 — Media library + upload UI 🚧 (in flight)
 
 - `/admin/media.php` — gallery with thumbnails, delete
 - `/api/upload.php` — already partially designed; finalises MIME whitelist, finfo verification, sanitised filenames, size caps
