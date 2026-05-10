@@ -11,6 +11,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/content.php';
 require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/pages.php';
 
 // Start the session before any output so Set-Cookie headers can be sent.

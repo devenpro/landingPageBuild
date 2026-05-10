@@ -24,7 +24,7 @@
                 <li><a href="#" class="hover:text-ink-800" data-edit="text" data-key="footer.privacy_label"><?= e(c('footer.privacy_label')) ?></a></li>
                 <li><a href="#" class="hover:text-ink-800" data-edit="text" data-key="footer.terms_label"><?= e(c('footer.terms_label')) ?></a></li>
                 <li><a href="#" class="hover:text-ink-800" data-edit="text" data-key="footer.contact_label"><?= e(c('footer.contact_label')) ?></a></li>
-                <li><a href="/admin/login" class="text-ink-300 hover:text-ink-500" data-edit="text" data-key="footer.admin_label"><?= e(c('footer.admin_label')) ?></a></li>
+                <li><a href="/admin/login.php" class="text-ink-300 hover:text-ink-500" data-edit="text" data-key="footer.admin_label"><?= e(c('footer.admin_label')) ?></a></li>
             </ul>
         </div>
 
