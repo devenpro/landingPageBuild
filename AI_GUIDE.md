@@ -2,7 +2,7 @@
 
 Captures the architectural decisions for Phases 10-13 so the implementation phases don't re-litigate them. Updated alongside each AI-touching PR.
 
-> **Status:** Planning only. No AI code shipped yet. Phase 10 starts the build.
+> **Status:** Phase 10 in flight. Scaffold + provider adapters shipped; admin UI for key management lands in this same phase.
 
 ---
 
@@ -21,19 +21,24 @@ Captures the architectural decisions for Phases 10-13 so the implementation phas
 
 ## Provider strategy
 
-**v1 ships with two providers, deliberately:**
+**v1 ships with three providers:**
 
-- **Gemini** (`gemini-1.5-flash` and `gemini-1.5-pro`) — Google's API. Free tier exists with strict limits (~15 req/min, 1500/day on `flash` as of design time). Good enough for admin-side use; **bad for a public chatbot at any scale**.
-- **OpenRouter** (https://openrouter.ai) — gateway to many models (Claude, GPT, Llama, Mistral, etc.). Pay-as-you-go with low minimums. Lets the user pick a cheap model for casual use and a strong model for page generation. **This is what we recommend for production chatbot traffic.**
+- **HuggingFace** (https://huggingface.co — Inference Providers / Router) — OpenAI-compatible chat-completions endpoint at `https://router.huggingface.co/v1/chat/completions` that multiplexes over many backend providers (Together, Fireworks, Replicate, etc.). Subscription-based; what you can call depends on your HF account. **Currently the default `AI_DEFAULT_PROVIDER`** because we have an active subscription. Verify routable models with `curl -H "Authorization: Bearer $HF_KEY" https://router.huggingface.co/v1/models`.
+- **Gemini** (`gemini-2.5-flash` and `gemini-2.5-pro`) — Google's API. Free tier exists with strict limits (~15 req/min, 1500/day on `flash` as of design time). Good enough for admin-side use; **bad for a public chatbot at any scale**. Older 1.5-series models were retired by Google in early 2026 — adapter default is now `gemini-2.5-flash`; query `models?key=…` against `generativelanguage.googleapis.com/v1beta` if you need to discover currently-available names.
+- **OpenRouter** (https://openrouter.ai) — gateway to many models (Claude, GPT, Llama, Mistral, etc.). Pay-as-you-go with low minimums. Lets the user pick a cheap model for casual use and a strong model for page generation. Useful as a fallback or when the user wants pay-per-call billing.
 
-Adding HuggingFace, Grok, etc. is left to later phases — each adapter is a maintenance liability (their endpoints change), and starting with two keeps the v1 surface tight. The provider abstraction (`core/lib/ai/client.php`) is designed so adding a new adapter is a matter of dropping a file in `core/lib/ai/providers/`.
+The provider abstraction (`core/lib/ai/client.php`) is designed so adding a new adapter (Grok, Anthropic direct, etc.) is a matter of dropping a file in `core/lib/ai/providers/` and adding the slug to `GUA_AI_PROVIDERS` in `core/lib/ai/keys.php`.
+
+### Default provider
+
+`AI_DEFAULT_PROVIDER` in `.env` (one of `huggingface | gemini | openrouter`) decides where admin AI tools (Phase 11) and the chatbot (Phase 13) land when no per-tool override is set. Currently `huggingface`. Change anytime — flips immediately on next request, no redeploy. `ai_default_provider()` in `core/lib/ai/client.php` reads it (with a fallback to the first whitelisted provider if the value is invalid).
 
 ### Provider order in the UI
 
 Admin can store multiple keys per provider (with labels) and pick one as the active key per provider. Each AI tool (suggest pages, generate page, frontend chat) has its own preferred-provider setting in `.env` or admin settings — defaults:
 
-- Admin tools (suggest, generate) → Gemini (free tier sufficient for occasional use)
-- Frontend chat → OpenRouter (cost-controllable per request)
+- Admin tools (suggest, generate) → falls back to `AI_DEFAULT_PROVIDER` (currently HuggingFace)
+- Frontend chat → falls back to `AI_DEFAULT_PROVIDER` (cost-controllable per request)
 
 ---
 
@@ -92,13 +97,14 @@ CREATE TABLE ai_provider_keys (
 core/lib/
 ├── crypto.php                       libsodium wrapper (encrypt/decrypt)
 └── ai/
-    ├── client.php                   provider-agnostic facade: ai_chat($provider, $messages, $opts)
+    ├── client.php                   provider-agnostic facade: ai_chat($provider, $messages, $opts) + ai_default_provider()
     ├── keys.php                     list/store/delete/get(decrypt) keys
     ├── log.php                      write to ai_calls
     ├── ratelimit.php                per-IP + daily token cap
     ├── providers/
-    │   ├── gemini.php               implements the Gemini REST contract
-    │   └── openrouter.php           implements the OpenRouter REST contract (chat-completions API)
+    │   ├── huggingface.php          HF Router (OpenAI-compat chat-completions)
+    │   ├── gemini.php               Gemini REST (generateContent)
+    │   └── openrouter.php           OpenRouter REST (chat-completions)
     └── prompts/
         ├── suggest_pages.php        prompt template + few-shot examples
         ├── generate_page.php        prompt template (output: structured JSON for a pages row)
@@ -114,8 +120,9 @@ API endpoints (under `site/public/api/`):
 
 Admin UI pages:
 
-- `/admin/settings.php` — manage API keys
-- `/admin/ai.php` — AI tools (suggest, generate, view spend log)
+- `/admin/ai-keys.php` — manage API keys (Phase 10)
+- `/admin/ai.php` — AI tools (suggest, generate, view spend log) (Phase 11)
+- `/admin/settings.php` — general site settings, reserved for later phases
 
 ---
 
@@ -132,17 +139,20 @@ These are deliberately deferred — pick when the implementing phase starts:
 
 ---
 
-## Implementation reading order (when Phase 10 starts)
+## Implementation reading order (Phase 10 progress)
 
-1. Re-read [BUILD_BRIEF.md §5](BUILD_BRIEF.md) for the current data model (where `ai_provider_keys` and `ai_calls` slot in)
-2. Re-read this file
-3. Test libsodium availability: `php -r 'echo extension_loaded("sodium") ? "ok" : "missing";'`
-4. Generate a master key, add to `.env`, document in `SETUP_GUIDE.md` if needed
-5. Write the migration first (`core/migrations/0003_ai_keys.sql`, `0004_ai_calls.sql`)
-6. Build `core/lib/crypto.php` + tests (encrypt → decrypt round-trip)
-7. Build `core/lib/ai/keys.php`
-8. Build first provider adapter (Gemini, since free tier means no credit card for testing)
-9. End-to-end smoke test: store a key → make an actual API call → log → confirm spend appears
-10. Then UI
+1. ✅ Re-read [BUILD_BRIEF.md §5](BUILD_BRIEF.md) for the current data model (where `ai_provider_keys` and `ai_calls` slot in)
+2. ✅ Re-read this file
+3. ✅ Test libsodium availability: `php -r 'echo extension_loaded("sodium") ? "ok" : "missing";'`
+4. ⏳ Generate a master key per deployment, add to `.env`, document in `SETUP_GUIDE.md` (per-site, not committed)
+5. ✅ Write the migration first (consolidated into `core/migrations/0003_ai_keys.sql` — both tables in one file since they ship together)
+6. ✅ Build `core/lib/crypto.php` (libsodium secretbox wrapper, encrypt/decrypt round-trip verified locally)
+7. ✅ Build `core/lib/ai/keys.php`
+8. ✅ Build first provider adapter (Gemini) — request/response shaping, cost estimate for `gemini-1.5-flash`/`pro`
+9. ✅ End-to-end smoke test: real free-tier key stored encrypted → `ai_chat()` → live `gemini-2.5-flash` round-trip in ~700ms → tokens logged to `ai_calls`
+10. ✅ Admin UI (`/admin/ai-keys.php` + `/api/ai/keys.php`)
 
-Don't skip step 8's smoke test. The first time you call a provider against a real key, the failure mode list is long (CORS, auth header format, request body shape, error response shape). Get it working with curl first, then port to the adapter.
+Notes captured during the smoke test:
+- **Gemini 2.5 "thinking" tokens are billable.** `usageMetadata.thoughtsTokenCount` is hidden from the response text but counts toward your quota. The adapter now sums it into `tokens_out` so the daily cap and spend reports reflect what Google actually bills. A small `max_tokens` budget can be entirely consumed by thoughts, leaving the visible text empty — callers should treat empty `text` as "model ran out of budget before producing output" and either retry with a higher cap or surface that to the user.
+- Older `gemini-1.5-*` aliases were retired by Google in early 2026. Use `gemini-2.5-flash` / `2.5-pro`, or query `models?key=…` against `generativelanguage.googleapis.com/v1beta` to discover currently-available names.
+- **HuggingFace adapter is shipped but not live-smoke-verified from this dev sandbox** (host allowlist blocks `*.huggingface.co`). The wire format is OpenAI-compatible and matches OpenRouter's contract, so it should work — but run the round-trip from your dev box or the deployed site before relying on it: store an `hf_…` key, call `ai_chat('huggingface', [...])` with a small prompt against `meta-llama/Llama-3.3-70B-Instruct` (or whichever model you confirm via `/v1/models`), confirm a row in `ai_calls`. If it fails, the most likely culprits are model not routable for your subscription (404), or auth header malformed (401).
