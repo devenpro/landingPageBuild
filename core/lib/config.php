@@ -77,6 +77,13 @@ define('GUA_AI_DEFAULT_PROVIDER', $env['AI_DEFAULT_PROVIDER'] ?? 'huggingface');
 // https://router.huggingface.co/v1/models
 define('GUA_HF_DEFAULT_MODEL', $env['HF_DEFAULT_MODEL'] ?? 'meta-llama/Llama-3.3-70B-Instruct');
 
+// Phase 13 — public chatbot widget. ENABLED toggles whether the
+// floating widget renders on public pages and whether /api/chat.php
+// accepts requests. PERSIST writes visitor↔assistant messages to
+// ai_chat_messages for admin review; OFF by default for privacy.
+define('GUA_AI_CHAT_ENABLED', filter_var($env['AI_CHAT_ENABLED'] ?? '0', FILTER_VALIDATE_BOOLEAN));
+define('GUA_AI_CHAT_PERSIST', filter_var($env['AI_CHAT_PERSIST'] ?? '0', FILTER_VALIDATE_BOOLEAN));
+
 // Core version — read from VERSION file
 $ver_file = GUA_CORE_PATH . '/VERSION';
 define('GUA_CORE_VERSION', is_file($ver_file) ? trim(file_get_contents($ver_file)) : 'unknown');
