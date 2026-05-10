@@ -9,11 +9,13 @@
 
 declare(strict_types=1);
 
-function layout_head(): void
+function layout_head(?array $page = null): void
 {
-    $title = c('seo.title', 'Go Ultra AI');
-    $desc = c('seo.description', '');
-    $og_image = c('seo.og_image', '/og-image.jpg');
+    $title = $page['seo_title']
+        ?? ($page['title'] ?? null)
+        ?? c('seo.title', 'Go Ultra AI');
+    $desc  = $page['seo_description'] ?? c('seo.description', '');
+    $og_image = $page['seo_og_image'] ?? c('seo.og_image', '/og-image.jpg');
     $url = defined('GUA_APP_URL') ? GUA_APP_URL : '';
     ?><!DOCTYPE html>
 <html lang="en">
