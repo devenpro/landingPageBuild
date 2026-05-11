@@ -211,7 +211,7 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🟡 | [#26](https://github.com/devenpro/landingPageBuild/pull/26) (rebase of #25; stacked on #23/#24) | 1.4.0 |
 | 5 | Taxonomy + Location Services | 🟡 | [#28](https://github.com/devenpro/landingPageBuild/pull/28) (rebase of #27, merged into integration) | 1.5.0 |
 | 6 | Forms builder | 🟡 | [#30](https://github.com/devenpro/landingPageBuild/pull/30) (merged) + [#31](https://github.com/devenpro/landingPageBuild/pull/31) fresh-install fix | 1.6.0 |
-| 7 | Media v2 (resize/WebP variants) | 🚧 | `v2/stage-7-media` | 1.7.0 |
+| 7 | Media v2 (resize/WebP variants) | ✅ | merged into `main` via [#32](https://github.com/devenpro/landingPageBuild/pull/32) | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | ⏳ | — | 1.8.0 |
 | 9 | Front-end canvas polish | ⏳ | — | 1.9.0 |
 | 10 | Site Bootstrap | ⏳ | — | 2.0.0 |
@@ -462,7 +462,7 @@ Multi-form CRUD with per-form fields and per-form webhooks. v1 had the waitlist 
 
 **Rollback**: revert the commit + `ALTER TABLE form_submissions DROP COLUMN form_id; ALTER TABLE form_submissions DROP COLUMN data_json;` (SQLite 3.35+) and `DROP TABLE forms; DROP TABLE form_fields; DROP TABLE form_webhooks;`. v1 hard-coded waitlist form needs to be restored from git. `webhook_post`'s extra args are backward-compatible (optional with defaults).
 
-### v2 Stage 7 — Media v2 (resize/WebP variants) 🚧 (`v2/stage-7-media`)
+### v2 Stage 7 — Media v2 (resize/WebP variants) ✅ ([#32](https://github.com/devenpro/landingPageBuild/pull/32))
 
 Real image processing pipeline. v1 stored the raw upload and that was it — no derivative sizes, no WebP, alt text lived in `content_blocks` values. v2 Stage 7 generates a set of resized variants (and WebP twins) on every upload, captures the original dimensions, and centralizes `alt_text` + `caption` on `media_assets` so a single edit propagates wherever the image is referenced.
 
