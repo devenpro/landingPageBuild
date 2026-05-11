@@ -119,6 +119,30 @@ Prompts for a password. Reads `ADMIN_EMAIL` from `.env`, writes a bcrypt-hashed 
 
 ---
 
+## 6.5 Cron — webhook retry worker (Phase 14 round D)
+
+If `WEBHOOK_URL` is set in `.env`, form submissions try one inline POST and queue any transient failure (5xx, timeout, connection refused) into `webhook_deliveries` for retry. The queue is drained by `core/scripts/webhook_worker.php` — wire it up under cron once per site:
+
+cPanel → **Cron Jobs** → **Add New Cron Job**:
+
+- Common settings → **Every 5 minutes** (or set the fields to `*/5 * * * *`)
+- Command:
+
+  ```
+  /usr/local/bin/ea-php83 /home/<user>/repositories/landingPageBuild/core/scripts/webhook_worker.php >> /home/<user>/repositories/landingPageBuild/data/webhook_worker.log 2>&1
+  ```
+
+Replace `<user>` and the path with your cPanel layout from step 1. The worker:
+
+- exits in milliseconds when the queue is empty (so a 5-minute cadence is cheap)
+- holds a non-blocking file lock at `data/webhook-worker.lock` so overlapping cron runs can't double-deliver a row
+- retries with exponential backoff (1m → 5m → 30m → 2h → 12h → 24h) and gives up after 6 attempts, flipping the row to `exhausted` — admins can force a retry from `/admin/webhooks.php`
+- treats HTTP 4xx as a permanent client error and won't auto-retry (the receiver is actively rejecting the payload; admins must fix it and click **Retry now**)
+
+The `data/webhook_worker.log` file grows by ~1 line per cron tick; rotate or truncate via the standard cPanel log-rotation cron if you care.
+
+---
+
 ## 7. Future deploys
 
 cPanel → **Git Version Control** → **Manage** next to repo → **Pull or Deploy**.

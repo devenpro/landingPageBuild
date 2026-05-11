@@ -9,7 +9,10 @@
 // 4. Honeypot — fake success if filled (don't tip off the bot)
 // 5. Server-side validation (don't trust client)
 // 6. INSERT into form_submissions FIRST (so we never lose a lead)
-// 7. Best-effort webhook POST (if WEBHOOK_URL set in .env)
+// 7. Inline webhook POST (if WEBHOOK_URL set in .env) — on transient
+//    failure (5xx, timeout, network error) the delivery is queued in
+//    webhook_deliveries and drained by core/scripts/webhook_worker.php.
+//    Phase 14 round D — see core/lib/webhook.php.
 // 8. UPDATE webhook_status / webhook_response on the row
 // 9. Respond — JSON {ok:true} for fetch callers, full HTML page for plain
 //    form POSTs (Phase 14 round B: graceful no-JS fallback)
@@ -251,7 +254,13 @@ $stmt->execute([
 ]);
 $submission_id = (int)$pdo->lastInsertId();
 
-// --- best-effort webhook ----------------------------------------------------
+// --- webhook (inline POST, fall back to retry queue on transient failure) ---
+// Behaviour by HTTP outcome:
+//   2xx           -> webhook_status='sent', no queue row
+//   4xx           -> webhook_status='failed', no queue row (permanent
+//                    client error; admin "Retry now" can still force it)
+//   5xx / network -> webhook_status='queued', queue row with first retry
+//                    in 60s. Drained by core/scripts/webhook_worker.php.
 
 $webhook_status   = 'skipped';
 $webhook_response = null;
@@ -269,28 +278,18 @@ if (GUA_WEBHOOK_URL !== '') {
         'referrer'        => $_SERVER['HTTP_REFERER']    ?? null,
     ];
 
-    $ch = curl_init(GUA_WEBHOOK_URL);
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS     => json_safe($payload),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => GUA_WEBHOOK_TIMEOUT_SECONDS,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS      => 3,
-        CURLOPT_USERAGENT      => 'GoUltraAI-Webhook/1.0',
-    ]);
-    $response  = curl_exec($ch);
-    $http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err       = curl_error($ch);
-    curl_close($ch);
+    $result = webhook_post(GUA_WEBHOOK_URL, $payload, GUA_WEBHOOK_TIMEOUT_SECONDS);
 
-    if ($response !== false && $http_code >= 200 && $http_code < 300) {
+    if ($result['ok']) {
         $webhook_status   = 'sent';
-        $webhook_response = mb_substr((string)$response, 0, 1000);
-    } else {
+        $webhook_response = $result['response'];
+    } elseif ($result['permanent']) {
         $webhook_status   = 'failed';
-        $webhook_response = $err !== '' ? $err : "HTTP {$http_code}";
+        $webhook_response = $result['error'];
+    } else {
+        webhook_enqueue($pdo, $submission_id, GUA_WEBHOOK_URL, $payload, 60);
+        $webhook_status   = 'queued';
+        $webhook_response = $result['error'];
     }
 
     $upd = $pdo->prepare(

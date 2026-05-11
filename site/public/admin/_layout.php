@@ -18,6 +18,7 @@ function admin_nav_items(): array
         ['slug' => 'content',   'label' => 'Content',   'href' => '/admin/content.php',   'live' => true],
         ['slug' => 'pages',     'label' => 'Pages',     'href' => '/admin/pages.php',     'live' => true],
         ['slug' => 'forms',     'label' => 'Forms',     'href' => '/admin/forms.php',     'live' => true],
+        ['slug' => 'webhooks',  'label' => 'Webhooks',  'href' => '/admin/webhooks.php',  'live' => true],
         ['slug' => 'media',     'label' => 'Media',     'href' => '/admin/media.php',     'live' => true],
         ['slug' => 'ai_keys',   'label' => 'AI keys',   'href' => '/admin/ai-keys.php',   'live' => true],
         ['slug' => 'ai_tools',  'label' => 'AI tools',  'href' => '/admin/ai.php',        'live' => true],

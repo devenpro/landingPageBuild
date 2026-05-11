@@ -175,14 +175,14 @@ Shipped so far:
 
 - ✅ Round A ([#17](https://github.com/devenpro/landingPageBuild/pull/17)) — JSON-LD `Organization` + `WebSite`, dynamic `/sitemap.xml` from the `pages` table, CSV export + pagination + search on the Forms inbox
 - ✅ Round B ([#18](https://github.com/devenpro/landingPageBuild/pull/18)) — per-IP rate limit on `POST /api/form.php` (5/hr default, configurable via `FORM_RATE_PER_IP_*`), no-JS HTML success/error/rate-limit page for plain form POSTs, `prefers-reduced-motion` honoured by JS-driven smooth scrolls
-- ✅ Round C (this branch) — Tailwind Play CDN dropped from all three layouts (`site/layout.php`, `site/public/admin/_layout.php`, `site/public/admin/login.php`). Tailwind v3.4 standalone CLI compiles `site/assets-src/styles.css` to `site/public/assets/css/styles.css` (29.5KB minified, committed). Build runs via `core/build/build-css.sh`; binary downloads on demand into `bin/` (gitignored)
+- ✅ Round C ([#19](https://github.com/devenpro/landingPageBuild/pull/19)) — Tailwind Play CDN dropped from all three layouts (`site/layout.php`, `site/public/admin/_layout.php`, `site/public/admin/login.php`). Tailwind v3.4 standalone CLI compiles `site/assets-src/styles.css` to `site/public/assets/css/styles.css` (29.5KB minified, committed). Build runs via `core/build/build-css.sh`; binary downloads on demand into `bin/` (gitignored)
+- ✅ Round D-1 (this branch) — webhook retry queue. `webhook_deliveries` table backs an out-of-band retry loop for transient receiver failures (5xx, timeouts, network errors). `/api/form.php` tries one inline POST then enqueues on transient failure; permanent 4xx stays marked `failed`. `core/scripts/webhook_worker.php` drains the queue under cron with exponential backoff (1m → 5m → 30m → 2h → 12h → 24h, 6 attempts max), holds a file lock to prevent overlap. New admin page `/admin/webhooks.php` shows the queue with status filter chips, **Retry now**, and **Cancel** actions. Cron entry documented in SETUP_GUIDE.md §6.5
 
 Still to land:
 
 - JSON-LD `Product` (needs CMS field support)
-- WCAG AA pass (Round D)
-- Lighthouse ≥ 95 mobile (Round D)
-- Webhook retry queue for transient failures (Round D)
+- WCAG AA pass (Round D-2)
+- Lighthouse ≥ 95 mobile (Round D-3)
 
 ### Phase 15 — Launch
 
