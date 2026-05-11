@@ -267,4 +267,230 @@
             save();
         }
     });
+
+    // ----- v2 Stage 9: section-aware UX (drag/add/delete + palette) ----------
+    // Only data-driven pages emit [data-gua-section] wrappers (file-based
+    // pages like home.php don't, by design — their section order is fixed
+    // in PHP). When this block finds no wrappers it exits silently.
+
+    const sectionEls = Array.from(document.querySelectorAll('.gua-section[data-gua-section]'));
+    if (sectionEls.length === 0) return;
+
+    const pageId = parseInt(sectionEls[0].getAttribute('data-gua-page-id') || '0', 10);
+    if (!pageId) return; // no usable page id → bail
+
+    let availableSections = null; // lazy-loaded on first palette open
+    let dragging = null;
+
+    function jsonPost(payload) {
+        return fetch('/api/sections.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken,
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        }).then(async function (res) {
+            const body = await res.json().catch(function () { return null; });
+            return { ok: res.ok && body && body.ok, body: body, status: res.status };
+        });
+    }
+
+    function currentOrder() {
+        return Array.from(document.querySelectorAll('.gua-section[data-gua-section]'))
+            .map(function (el) { return el.getAttribute('data-gua-section'); });
+    }
+
+    function persistOrder() {
+        return jsonPost({ action: 'reorder', page_id: pageId, sections: currentOrder() })
+            .then(function (r) {
+                if (r.ok) {
+                    toast('Section order saved', 'ok');
+                } else {
+                    toast((r.body && r.body.error) || ('Reorder failed: ' + r.status), 'err');
+                }
+                return r;
+            });
+    }
+
+    function deleteSection(el) {
+        const slug = el.getAttribute('data-gua-section');
+        const index = parseInt(el.getAttribute('data-gua-section-index') || '0', 10);
+        if (!window.confirm('Remove the "' + slug + '" section from this page?')) return;
+        jsonPost({ action: 'delete', page_id: pageId, index: index }).then(function (r) {
+            if (r.ok) {
+                toast('Section removed', 'ok');
+                setTimeout(function () { window.location.reload(); }, 400);
+            } else {
+                toast((r.body && r.body.error) || ('Delete failed: ' + r.status), 'err');
+            }
+        });
+    }
+
+    function openPalette(afterIndex) {
+        const overlay = document.createElement('div');
+        overlay.className = 'gua-palette-overlay';
+        overlay.innerHTML = ''
+            + '<div class="gua-palette" role="dialog" aria-modal="true" aria-label="Add a section">'
+            + '  <header class="gua-palette__header">'
+            + '    <h2>Add a section</h2>'
+            + '    <button type="button" class="gua-palette__close" aria-label="Close">&times;</button>'
+            + '  </header>'
+            + '  <div class="gua-palette__body"><p class="gua-palette__loading">Loading…</p></div>'
+            + '</div>';
+        document.body.appendChild(overlay);
+
+        function close() { overlay.remove(); document.removeEventListener('keydown', escClose); }
+        function escClose(e) { if (e.key === 'Escape') close(); }
+        document.addEventListener('keydown', escClose);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        overlay.querySelector('.gua-palette__close').addEventListener('click', close);
+
+        function render(list) {
+            const body = overlay.querySelector('.gua-palette__body');
+            body.innerHTML = '';
+            const groups = { general: [], layout: [], content_type: [] };
+            list.forEach(function (s) { (groups[s.category] || groups.general).push(s); });
+            ['general', 'layout', 'content_type'].forEach(function (cat) {
+                if (groups[cat].length === 0) return;
+                const h = document.createElement('h3');
+                h.textContent = cat === 'content_type' ? 'Content-type details' : cat[0].toUpperCase() + cat.slice(1);
+                h.className = 'gua-palette__group';
+                body.appendChild(h);
+                const ul = document.createElement('ul');
+                ul.className = 'gua-palette__list';
+                groups[cat].forEach(function (s) {
+                    const li = document.createElement('li');
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'gua-palette__item';
+                    btn.innerHTML = '<span class="gua-palette__slug">' + s.slug + '</span>'
+                                  + '<span class="gua-palette__label">' + s.label + '</span>';
+                    btn.addEventListener('click', function () {
+                        close();
+                        jsonPost({
+                            action: 'add',
+                            page_id: pageId,
+                            section: s.slug,
+                            after_index: afterIndex,
+                        }).then(function (r) {
+                            if (r.ok) {
+                                toast('Section added — reloading…', 'ok');
+                                setTimeout(function () { window.location.reload(); }, 400);
+                            } else {
+                                toast((r.body && r.body.error) || ('Add failed: ' + r.status), 'err');
+                            }
+                        });
+                    });
+                    li.appendChild(btn);
+                    ul.appendChild(li);
+                });
+                body.appendChild(ul);
+            });
+        }
+
+        function ensureLoaded() {
+            if (availableSections) { render(availableSections); return; }
+            fetch('/api/sections.php', {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' },
+            }).then(async function (res) {
+                const body = await res.json().catch(function () { return null; });
+                if (res.ok && body && body.ok && Array.isArray(body.sections)) {
+                    availableSections = body.sections;
+                    render(availableSections);
+                } else {
+                    overlay.querySelector('.gua-palette__body').innerHTML =
+                        '<p class="gua-palette__error">Failed to load section list</p>';
+                }
+            }).catch(function () {
+                overlay.querySelector('.gua-palette__body').innerHTML =
+                    '<p class="gua-palette__error">Network error</p>';
+            });
+        }
+        ensureLoaded();
+    }
+
+    function makeToolbar(el) {
+        const slug  = el.getAttribute('data-gua-section');
+        const index = parseInt(el.getAttribute('data-gua-section-index') || '0', 10);
+
+        const bar = document.createElement('div');
+        bar.className = 'gua-section-toolbar';
+        bar.innerHTML = ''
+            + '<span class="gua-section-toolbar__handle" draggable="true" title="Drag to reorder">⠿</span>'
+            + '<span class="gua-section-toolbar__slug">' + slug + '</span>'
+            + '<button type="button" class="gua-section-toolbar__btn" data-action="add" title="Add section after">+</button>'
+            + '<button type="button" class="gua-section-toolbar__btn gua-section-toolbar__btn--danger" data-action="delete" title="Delete section">×</button>';
+
+        bar.querySelector('[data-action="add"]').addEventListener('click', function (e) {
+            e.stopPropagation();
+            openPalette(index);
+        });
+        bar.querySelector('[data-action="delete"]').addEventListener('click', function (e) {
+            e.stopPropagation();
+            deleteSection(el);
+        });
+
+        const handle = bar.querySelector('.gua-section-toolbar__handle');
+        // Native HTML5 drag-and-drop. The handle is the drag source; the
+        // <div class="gua-section"> wrappers are both drop targets and the
+        // visible drag image. We toggle the dragging marker class on the
+        // host element so CSS can style it. dragover on each section
+        // determines insertion direction (before/after based on midpoint).
+        handle.addEventListener('dragstart', function (e) {
+            dragging = el;
+            el.classList.add('gua-section--dragging');
+            try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', slug); } catch (_) {}
+            // Use the section element as drag image so the user sees the whole block.
+            try { e.dataTransfer.setDragImage(el, 16, 16); } catch (_) {}
+        });
+        handle.addEventListener('dragend', function () {
+            if (dragging) dragging.classList.remove('gua-section--dragging');
+            dragging = null;
+            document.querySelectorAll('.gua-section--drop-before, .gua-section--drop-after')
+                .forEach(function (n) { n.classList.remove('gua-section--drop-before', 'gua-section--drop-after'); });
+        });
+
+        el.appendChild(bar);
+
+        el.addEventListener('dragover', function (e) {
+            if (!dragging || dragging === el) return;
+            e.preventDefault();
+            const rect = el.getBoundingClientRect();
+            const mid  = rect.top + rect.height / 2;
+            el.classList.toggle('gua-section--drop-before', e.clientY < mid);
+            el.classList.toggle('gua-section--drop-after',  e.clientY >= mid);
+        });
+        el.addEventListener('dragleave', function () {
+            el.classList.remove('gua-section--drop-before', 'gua-section--drop-after');
+        });
+        el.addEventListener('drop', function (e) {
+            if (!dragging || dragging === el) return;
+            e.preventDefault();
+            const before = el.classList.contains('gua-section--drop-before');
+            el.classList.remove('gua-section--drop-before', 'gua-section--drop-after');
+            if (before) el.parentNode.insertBefore(dragging, el);
+            else        el.parentNode.insertBefore(dragging, el.nextSibling);
+            // Renumber data-gua-section-index after move
+            Array.from(document.querySelectorAll('.gua-section[data-gua-section]'))
+                .forEach(function (n, i) { n.setAttribute('data-gua-section-index', String(i)); });
+            persistOrder();
+        });
+    }
+
+    sectionEls.forEach(makeToolbar);
+
+    // "Add section" affordance at the very top (before the first section).
+    const firstSection = sectionEls[0];
+    if (firstSection) {
+        const topBtn = document.createElement('button');
+        topBtn.type = 'button';
+        topBtn.className = 'gua-section-add-top';
+        topBtn.textContent = '+ Add section at top';
+        topBtn.addEventListener('click', function () { openPalette(-1); });
+        firstSection.parentNode.insertBefore(topBtn, firstSection);
+    }
 })();

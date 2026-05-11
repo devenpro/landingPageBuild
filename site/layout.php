@@ -152,6 +152,13 @@ function layout_foot(): void
 <?php if (defined('GUA_AI_CHAT_ENABLED') && GUA_AI_CHAT_ENABLED): ?>
 <script src="/assets/js/chat-widget.js" defer></script>
 <?php endif; ?>
+
+<?php // v2 Stage 9 — scroll-driven reveal on public pages. Skipped in
+      // edit mode because admin section markers + drag UX work better
+      // without animation interfering. ?>
+<?php if (!$is_editor): ?>
+<script src="/assets/js/reveal.js" defer></script>
+<?php endif; ?>
 </body>
 </html>
 <?php
