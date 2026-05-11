@@ -47,18 +47,6 @@ http_response_code($error !== '' ? 401 : 200);
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preload" href="/assets/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/assets/css/styles.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: { extend: {
-          fontFamily: { sans: ['"InterVariable"', 'system-ui', 'sans-serif'] },
-          colors: {
-            brand: { 50:'#f5f3ff',100:'#ede9fe',200:'#ddd6fe',300:'#c4b5fd',400:'#a78bfa',500:'#8b5cf6',600:'#7c3aed',700:'#6d28d9',800:'#5b21b6',900:'#4c1d95' },
-            ink: { 50:'#f9fafb',100:'#f3f4f6',200:'#e5e7eb',300:'#d1d5db',400:'#9ca3af',500:'#6b7280',600:'#4b5563',700:'#374151',800:'#1f2937',900:'#111827' },
-          },
-        }},
-      };
-    </script>
 </head>
 <body class="font-sans bg-ink-50/60 text-ink-800 antialiased">
     <main class="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 py-12 sm:px-6">

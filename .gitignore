@@ -31,3 +31,8 @@ vendor/
 
 # Logs
 *.log
+
+# Tailwind CLI standalone binary — downloaded on demand by
+# core/build/build-css.sh, ~40MB, platform-specific. The compiled
+# output (site/public/assets/css/styles.css) IS committed.
+/bin/tailwindcss

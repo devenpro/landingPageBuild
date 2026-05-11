@@ -174,13 +174,13 @@ Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11]
 Shipped so far:
 
 - ✅ Round A ([#17](https://github.com/devenpro/landingPageBuild/pull/17)) — JSON-LD `Organization` + `WebSite`, dynamic `/sitemap.xml` from the `pages` table, CSV export + pagination + search on the Forms inbox
-- ✅ Round B (this branch) — per-IP rate limit on `POST /api/form.php` (5/hr default, configurable via `FORM_RATE_PER_IP_*`), no-JS HTML success/error/rate-limit page for plain form POSTs, `prefers-reduced-motion` honoured by JS-driven smooth scrolls
+- ✅ Round B ([#18](https://github.com/devenpro/landingPageBuild/pull/18)) — per-IP rate limit on `POST /api/form.php` (5/hr default, configurable via `FORM_RATE_PER_IP_*`), no-JS HTML success/error/rate-limit page for plain form POSTs, `prefers-reduced-motion` honoured by JS-driven smooth scrolls
+- ✅ Round C (this branch) — Tailwind Play CDN dropped from all three layouts (`site/layout.php`, `site/public/admin/_layout.php`, `site/public/admin/login.php`). Tailwind v3.4 standalone CLI compiles `site/assets-src/styles.css` to `site/public/assets/css/styles.css` (29.5KB minified, committed). Build runs via `core/build/build-css.sh`; binary downloads on demand into `bin/` (gitignored)
 
 Still to land:
 
-- Hand-built `styles.css` replacing Tailwind Play CDN (Round C)
 - JSON-LD `Product` (needs CMS field support)
-- WCAG AA pass (Round C)
+- WCAG AA pass (Round D)
 - Lighthouse ≥ 95 mobile (Round D)
 - Webhook retry queue for transient failures (Round D)
 

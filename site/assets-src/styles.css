@@ -1,0 +1,205 @@
+/* site/assets-src/styles.css — Tailwind v3 source.
+   Compiled to site/public/assets/css/styles.css by bin/build-css.sh.
+   See README.md ("Building styles") for the build workflow.
+
+   Anything NOT a @tailwind directive lives here too:
+   - self-hosted Inter @font-face
+   - edit-mode hover outlines (Phase 5)
+   - prefers-reduced-motion global override
+   - chat widget styles (Phase 13) — self-contained, no Tailwind classes
+     so the widget keeps working even if utilities ever get tree-shaken away. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+    font-family: 'InterVariable';
+    src: url('/assets/fonts/InterVariable.woff2') format('woff2-variations'),
+         url('/assets/fonts/InterVariable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { font-feature-settings: 'cv11', 'ss01', 'ss03'; }
+
+/* Edit-mode visual cues — only render when <body class="edit-mode">.
+   Phase 5 sets that class on the server when an admin session is active. */
+.edit-mode [data-edit] {
+    outline: 1.5px dashed transparent;
+    outline-offset: 4px;
+    border-radius: 4px;
+    transition: outline-color 120ms ease;
+    cursor: pointer;
+}
+.edit-mode [data-edit]:hover {
+    outline-color: #7c3aed;
+}
+.edit-mode [data-edit].is-editing {
+    outline-style: solid;
+    outline-color: #7c3aed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+/* ============================================================================
+   Chat widget (Phase 13). Loaded only when GUA_AI_CHAT_ENABLED=1.
+   Self-contained styles — no Tailwind classes — so the widget keeps working
+   even if utilities ever get tree-shaken away.
+   ============================================================================ */
+.gua-chat {
+    --gua-chat-bg: #ffffff;
+    --gua-chat-fg: #111827;
+    --gua-chat-muted: #6b7280;
+    --gua-chat-brand: #7c3aed;
+    --gua-chat-brand-fg: #ffffff;
+    --gua-chat-border: #e5e7eb;
+    --gua-chat-shadow: 0 12px 32px rgba(17, 24, 39, .12);
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 9990;
+    font-family: 'InterVariable', system-ui, -apple-system, Segoe UI, sans-serif;
+    color: var(--gua-chat-fg);
+}
+.gua-chat__bubble {
+    width: 56px;
+    height: 56px;
+    border-radius: 9999px;
+    border: 0;
+    background: var(--gua-chat-brand);
+    color: var(--gua-chat-brand-fg);
+    box-shadow: var(--gua-chat-shadow);
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.gua-chat__bubble:hover { transform: translateY(-2px); }
+.gua-chat__bubble:focus-visible { outline: 3px solid #c4b5fd; outline-offset: 3px; }
+.gua-chat__bubble-icon { display: inline-block; line-height: 1; }
+
+.gua-chat__panel {
+    position: absolute;
+    right: 0;
+    bottom: 72px;
+    width: min(360px, calc(100vw - 2rem));
+    height: min(540px, calc(100vh - 6rem));
+    background: var(--gua-chat-bg);
+    border: 1px solid var(--gua-chat-border);
+    border-radius: 16px;
+    box-shadow: var(--gua-chat-shadow);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transform-origin: bottom right;
+}
+.gua-chat__panel--open { display: flex; }
+
+.gua-chat__header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--gua-chat-border);
+    background: linear-gradient(180deg, #faf9ff 0%, #ffffff 100%);
+}
+.gua-chat__title { font-weight: 600; font-size: .95rem; flex: 1; }
+.gua-chat__close, .gua-chat__reset {
+    background: transparent;
+    border: 1px solid var(--gua-chat-border);
+    color: var(--gua-chat-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: .25rem .5rem;
+    font-size: .8rem;
+    line-height: 1.2;
+}
+.gua-chat__close { font-size: 1.25rem; padding: 0 .55rem; }
+.gua-chat__close:hover, .gua-chat__reset:hover { color: var(--gua-chat-fg); }
+
+.gua-chat__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: .75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    background: #fafafa;
+}
+.gua-chat__msg {
+    display: flex;
+    max-width: 85%;
+}
+.gua-chat__msg--user { align-self: flex-end; }
+.gua-chat__msg--assistant { align-self: flex-start; }
+.gua-chat__bubble-msg {
+    padding: .55rem .75rem;
+    border-radius: 12px;
+    font-size: .9rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.gua-chat__msg--user .gua-chat__bubble-msg {
+    background: var(--gua-chat-brand);
+    color: var(--gua-chat-brand-fg);
+    border-bottom-right-radius: 4px;
+}
+.gua-chat__msg--assistant .gua-chat__bubble-msg {
+    background: #ffffff;
+    border: 1px solid var(--gua-chat-border);
+    border-bottom-left-radius: 4px;
+}
+.gua-chat__msg--typing .gua-chat__bubble-msg {
+    color: var(--gua-chat-muted);
+    font-style: italic;
+}
+
+.gua-chat__form {
+    display: flex;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-top: 1px solid var(--gua-chat-border);
+    background: #ffffff;
+}
+.gua-chat__input {
+    flex: 1;
+    border: 1px solid var(--gua-chat-border);
+    border-radius: 8px;
+    padding: .5rem .75rem;
+    font: inherit;
+    font-size: .9rem;
+    resize: none;
+    line-height: 1.4;
+    max-height: 120px;
+    outline: none;
+}
+.gua-chat__input:focus { border-color: var(--gua-chat-brand); box-shadow: 0 0 0 3px rgba(124, 58, 237, .15); }
+.gua-chat__send {
+    background: var(--gua-chat-brand);
+    color: var(--gua-chat-brand-fg);
+    border: 0;
+    border-radius: 8px;
+    padding: 0 .9rem;
+    font-size: 1rem;
+    cursor: pointer;
+    align-self: flex-end;
+    height: 36px;
+}
+.gua-chat__send:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+    .gua-chat { right: .5rem; bottom: .5rem; }
+    .gua-chat__panel { right: 0; bottom: 64px; width: calc(100vw - 1rem); height: calc(100vh - 5rem); }
+}

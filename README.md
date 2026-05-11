@@ -13,14 +13,16 @@ landingPageBuild/                       single git repo, one clone per site
 ├── core/                               versioned engine (touched in /core-mode)
 │   ├── VERSION                         "1.0.0"
 │   ├── lib/                            bootstrap, config, db, content, helpers
-│   ├── scripts/                        migrate, seed_admin
+│   ├── scripts/                        migrate, seed_admin, dev-router
+│   ├── build/                          tailwind.config.js + build-css.sh
 │   └── migrations/                     core schema
 ├── site/                               per-site theme + content (touched in /site-mode)
 │   ├── public/                         doc root — point cPanel here
 │   │   ├── index.php                   front controller
 │   │   ├── .htaccess                   security + routing
-│   │   ├── assets/                     css, fonts, placeholders
+│   │   ├── assets/                     compiled css, fonts, placeholders
 │   │   └── uploads/                    runtime media (gitignored)
+│   ├── assets-src/                     CSS source for the Tailwind compile
 │   ├── pages/                          file-based pages (Phase 4+)
 │   ├── sections/                       reusable section partials
 │   ├── layout.php                      head/foot
@@ -57,6 +59,20 @@ C:\xampp\php\php.exe core\scripts\seed_admin.php
 ## Production deploy (cPanel)
 
 See [SETUP_GUIDE.md](SETUP_GUIDE.md). The short version: clone repo into a folder, point the domain's doc root at `<repo>/site/public/`, upload `.env` to repo root, run `core/scripts/migrate.php`.
+
+## Building styles
+
+`site/public/assets/css/styles.css` is the compiled output of the Tailwind v3 CLI and IS committed to the repo, so cPanel deploys remain build-tool-free. Only re-run the build when you introduce a new utility class in a `.php` file under `site/` or change a theme token in `core/build/tailwind.config.js`.
+
+```bash
+# One-shot production build (minified)
+core/build/build-css.sh
+
+# Watch mode for local dev (unminified, rebuilds on file save)
+core/build/build-css.sh --watch
+```
+
+The script downloads the Tailwind CLI standalone binary on first run into `./bin/tailwindcss` (gitignored, ~40MB, platform-specific) and reuses it on subsequent runs. Source CSS lives at `site/assets-src/styles.css`. Config (content paths, brand/ink color scales, Inter font stack) lives at `core/build/tailwind.config.js`.
 
 ## Working with Claude Code
 
