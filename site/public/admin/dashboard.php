@@ -1,5 +1,5 @@
 <?php
-// site/public/admin/dashboard.php — landing page after login.
+// site/public/admin/dashboard.php — admin home page after login.
 // Renders quick-link cards to each admin tool. Live tools (Content,
 // Forms in Phase 7) link out; future tools show as dashed placeholders
 // with the phase number that will activate them.

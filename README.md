@@ -1,6 +1,6 @@
 # Go Ultra AI — Multi-page CMS with AI
 
-Self-hosted PHP+SQLite product for building marketing/landing sites with optional AI assistance. Designed to deploy to cPanel shared hosting via Git Version Control with no build step.
+Self-hosted PHP+SQLite product for building multi-page business websites with optional AI assistance. Designed to deploy to cPanel shared hosting via Git Version Control with no build step.
 
 See [BUILD_BRIEF.md](BUILD_BRIEF.md) for the full spec, [SETUP_GUIDE.md](SETUP_GUIDE.md) for cPanel deploy, [MULTI_SITE.md](MULTI_SITE.md) for the multi-site model, [AI_GUIDE.md](AI_GUIDE.md) for the AI feature roadmap, and [PHASE_STATUS.md](PHASE_STATUS.md) for the live per-phase tracker.
 

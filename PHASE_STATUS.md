@@ -1,6 +1,6 @@
 # Phase status — live tracker
 
-Updated: 2026-05-10. Update this file in the same PR that changes phase status, so the tracker stays honest.
+Updated: 2026-05-11. Update this file in the same PR that changes phase status, so the tracker stays honest.
 
 Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded · ⏳ pending · 🚧 in flight
 
@@ -193,3 +193,41 @@ Phase 14 is otherwise complete: all four rounds (admin polish + SEO, form rate-l
 - Content entry through admin
 - Tag `core/VERSION` as `v1.0.0` in git
 - Deploy + smoke test on cPanel
+
+---
+
+## V2 — Multi-page website builder enhancements
+
+11-stage v2 plan (Stage 0 + Stages 1–10). Each stage ships on its own branch; Stage 0 (this entry) initiates on the active feature branch.
+
+Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded · ⏳ pending · 🚧 in flight
+
+| # | Stage | Status | Branch | core/VERSION |
+|---|---|---|---|---|
+| 0 | Framing cleanup — remove stale "landing page builder" wording | 🚧 | `claude/enhance-core-features-Ylt9R` | 1.0.1 |
+| 1 | Settings foundation | ⏳ | — | 1.1.0 |
+| 2 | Brand Context Library | ⏳ | — | 1.2.0 |
+| 3 | Content blocks rework | ⏳ | — | 1.3.0 |
+| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Location Services, Ad Landing Pages) | ⏳ | — | 1.4.0 |
+| 5 | Taxonomy | ⏳ | — | 1.5.0 |
+| 6 | Forms builder | ⏳ | — | 1.6.0 |
+| 7 | Media v2 (crop/resize/WebP) | ⏳ | — | 1.7.0 |
+| 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | ⏳ | — | 1.8.0 |
+| 9 | Front-end canvas polish | ⏳ | — | 1.9.0 |
+| 10 | Site Bootstrap | ⏳ | — | 2.0.0 |
+
+### v2 Stage 0 — Framing cleanup 🚧
+
+Scrubbed stale "landing page builder" wording from active code and docs so the system's identity as a multi-page website CMS is consistent everywhere. The repo started as a single-page tool (v1 Phase 2) and was expanded to a full website CMS at v1 Phase 3 — most active docs were updated then, but a few prompt strings and comments still narrowed the framing.
+
+- `core/lib/ai/prompts/generate_page.php` — system prompt updated to "page draft for a multi-page business website" (was "landing-page draft for a small business"). Added a hard rule explicitly enumerating valid page types the model can produce: service detail page, location-service page, company-profile page, ad landing page, or generic marketing page. Top-of-file comment updated to "credible business / service / campaign page" (was "credible landing page").
+- `site/public/admin/dashboard.php:2` — comment changed from "landing page after login" → "admin home page after login".
+- `SETUP_GUIDE.md:102` — "You should see the full landing page" → "You should see the live site (home page)".
+- `README.md:3` — subtitle "marketing/landing sites" → "multi-page business websites".
+- `core/VERSION` — `1.0.0` → `1.0.1`.
+
+Historical references in `BUILD_BRIEF.md` (lines 3, 202, 292), `PHASE_STATUS.md` (Phase 2 entries above), and `README.md` (Phase 2 tracker entry) are intentionally preserved — they correctly label v1 Phase 2 as "Static landing page (superseded)" and removing them would erase project history.
+
+Verification: `grep -rin "landing page" core/ site/ README.md SETUP_GUIDE.md AGENTS.md AI_GUIDE.md MULTI_SITE.md PHASE_STATUS.md` returns only the 2 intentional hits in `generate_page.php` (the new hard rule listing "ad landing page" as one valid page type) plus the 3 historical Phase 2 tracker entries. No active code or non-historical doc describes the system as a "landing page builder".
+
+Rollback: revert the commit. Schema unchanged, no DB migration to undo.

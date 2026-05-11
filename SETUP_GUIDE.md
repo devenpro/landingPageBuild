@@ -99,7 +99,7 @@ If `ea-php83` isn't right on your host, list available versions: `ls /usr/local/
 
 ## 5. Visit the site
 
-Open `https://your-domain.com` in a browser. You should see the full landing page.
+Open `https://your-domain.com` in a browser. You should see the live site (home page).
 
 If you see a blank page or 500: cPanel → **Errors** for the PHP error log. Most likely:
 
