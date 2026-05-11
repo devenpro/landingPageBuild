@@ -213,7 +213,7 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 6 | Forms builder | 🟡 | [#30](https://github.com/devenpro/landingPageBuild/pull/30) (merged) + [#31](https://github.com/devenpro/landingPageBuild/pull/31) fresh-install fix | 1.6.0 |
 | 7 | Media v2 (resize/WebP variants) | ✅ | merged into `main` via [#32](https://github.com/devenpro/landingPageBuild/pull/32) | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | 🚧 | `claude/pending-phases-VRtWd` | 1.8.0 |
-| 9 | Front-end canvas polish | ⏳ | — | 1.9.0 |
+| 9 | Front-end canvas polish | 🚧 | `claude/pending-phases-VRtWd` | 1.9.0 |
 | 10 | Site Bootstrap | ⏳ | — | 2.0.0 |
 
 ### v2 Stage 0 — Framing cleanup 🟡 ([#23](https://github.com/devenpro/landingPageBuild/pull/23))
@@ -524,3 +524,35 @@ v1 shipped three providers (HuggingFace, Gemini, OpenRouter) with a hard-coded d
 - Live calls (chat + list_models) are NOT exercised in the smoke test because no real API keys are available in CI; manual verification with stored keys covers that path.
 
 **Rollback**: revert the commit + `DROP TABLE ai_model_cache;` and `DELETE FROM site_settings WHERE key IN ('anthropic_default_model','openai_default_model','grok_default_model','gemini_default_model','openrouter_default_model','ai_model_cache_ttl_hours');`. The 3 new provider adapter files become unreachable but harmless. Stored keys for the new providers (if any) will fail validation against the shrunken allowlist — `DELETE FROM ai_provider_keys WHERE provider IN ('anthropic','openai','grok');` is the safe cleanup.
+
+### v2 Stage 9 — Front-end canvas polish 🚧 (`claude/pending-phases-VRtWd`)
+
+v1's inline editor (Phase 9) was field-only: every `[data-edit]` element became individually clickable but the editor had no notion of "sections" as units. v2 Stage 4 introduced data-driven pages whose `sections_json` column orders the partials, but the only way to reorder them was a raw JSON textarea in `/admin/pages.php`. Stage 9 fills the gap with a section-aware inline editor (drag-to-reorder + add/delete + palette modal) plus visitor-side polish (scroll-driven reveals, consistent focus rings, micro-interactions).
+
+**Renderer** (`core/lib/pages.php`)
+- `render_data_driven_page()` now wraps each section include in `<div class="gua-section" data-gua-section="<slug>" data-gua-section-index="<i>" data-gua-page-id="<id>">` *only when an admin is logged in*. Public visitors get the same DOM as before — zero added wrapper divs, zero extra bytes. The wrapper anchors the JS toolbar, drag/drop targets, and the API contract for reorder/add/delete.
+
+**API** (`site/public/api/sections.php`)
+- Admin-only. `GET` returns the catalogue of available section partials with category (`layout` | `general` | `content_type`) so the palette can group them. `POST {action:'reorder', page_id, sections:[…]}` replaces `pages.sections_json`. `POST {action:'add', page_id, section, after_index?}` inserts at a given position (or end). `POST {action:'delete', page_id, index}` removes the section at that index.
+- All POST verbs CSRF-protected and refuse to operate on file-based pages (returns 409) — those need their PHP file edited directly. Validation goes through `sections_validate_one()` (slug regex + realpath check under `site/sections/`) so an attacker can't add e.g. `../../../etc/passwd` as a "section".
+
+**Inline editor** (`site/public/assets/js/editor.js`)
+- Existing field-level edit UX (text/icon/image/video) preserved unchanged.
+- New: each `.gua-section` element grows a hover-revealed toolbar with a drag handle (⠿), an Add-after (+), and a Delete (×) action. Native HTML5 drag-and-drop reorders sections in place; the host element drops out at 40% opacity while dragging, and the target shows a purple inset shadow on the side where insertion will land (above or below midpoint). On drop, indices are renumbered and `POST /api/sections.php` persists the new order.
+- The Add button opens a palette modal that lazy-loads the catalogue and renders the three categories with sticky group headings. Clicking a slug inserts it after the source section and reloads. Escape and click-outside both close the modal; the close button (×) too.
+- An "+ Add section at top" affordance is injected above the first section so the page can be prepended without finding the first section's toolbar.
+
+**Public-page polish**
+- `site/public/assets/js/reveal.js` — IntersectionObserver tags every `<section>` (except the hero, to avoid an above-the-fold flash) as `.gua-reveal`, then adds `.gua-revealed` when each enters the viewport. `rootMargin: '0px 0px -64px 0px'` so the transition completes around the time the section is visually centred. Old browsers without IO get the final state immediately (no stuck-hidden content).
+- Loaded only when `!$is_editor` so admin sessions skip animations (cleaner drag UX, no extra layer fighting the toolbar).
+- CSS additions in `site/assets-src/styles.css`: `.gua-reveal` (12px translate + opacity, 480ms ease-out), consistent `:focus-visible` outline (brand-500 at 2px, AA-compliant), a `.gua-lift` marker class for opt-in hover lift, and a `.gua-prose a` underline-from-center for inline links. All sit under the existing `@media (prefers-reduced-motion: reduce)` override so users with the OS-level preference get an instant snap rather than animations.
+
+**Tailwind recompile**
+- `core/build/build-css.sh` re-runs against the updated source, growing the minified bundle from 29.5KB → 39.1KB (the extra 10KB is the section toolbar + palette + reveal animation + micro-interaction CSS, all admin-or-public-only at runtime).
+
+**Verification**
+- `core/scripts/test_stage_9.php` — 28 assertions: section partials inventory, marker template emission in `pages.php`, API endpoint defines `sections_available` / `sections_validate_*` / `page_save_sections` + the three action verbs + the file-based-page guard, `reveal.js` uses `IntersectionObserver` and applies the right class, `editor.js` has the drag handle and palette wiring, compiled CSS contains `.gua-reveal` / `.gua-section-toolbar` / `.gua-palette`, layout.php gates `reveal.js` on `!$is_editor`. All pass.
+- `test_stage_1.php`, `test_stage_7.php`, and `test_stage_8.php` still pass (no regressions).
+- Live browser verification (drag-to-reorder, palette open/close, mobile reveal timing) is manual and noted in the commit description.
+
+**Rollback**: revert the commit. No schema change, so no DB rollback needed. `site/public/api/sections.php` and `reveal.js` become unreachable; the marker wrapper in `render_data_driven_page()` reverts to a plain `require`. The editor falls back to v1's field-only UX.

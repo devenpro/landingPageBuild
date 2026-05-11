@@ -246,17 +246,32 @@ function render_data_driven_page(array $page): void
             echo 'Page misconfigured: section "' . htmlspecialchars($name) . '" not found';
             return;
         }
-        $files[] = $candidate;
+        $files[] = ['slug' => $name, 'path' => $candidate];
     }
 
     // Set the page-scoped content prefix so c('hero.headline') tries
     // 'page.<slug>.hero.headline' first, falls back to 'hero.headline'.
     content_set_prefix('page.' . $slug);
 
+    // v2 Stage 9: when an admin is logged in, wrap each section include in a
+    // thin marker div carrying the slug + index + page id, so editor.js can
+    // identify section boundaries for drag-to-reorder and add/delete UX.
+    // Public visitors never see these wrappers (no extra DOM cost).
+    $is_editor = function_exists('auth_current_user') && auth_current_user() !== null;
+    $page_id   = (int)($page['id'] ?? 0);
+
     require GUA_SITE_PATH . '/layout.php';
     layout_head($page);
-    foreach ($files as $f) {
-        require $f;
+    foreach ($files as $i => $f) {
+        if ($is_editor) {
+            echo '<div class="gua-section" data-gua-section="' . htmlspecialchars($f['slug'], ENT_QUOTES) . '"'
+               . ' data-gua-section-index="' . $i . '"'
+               . ' data-gua-page-id="' . $page_id . '">';
+        }
+        require $f['path'];
+        if ($is_editor) {
+            echo '</div>';
+        }
     }
     layout_foot();
 
