@@ -8,6 +8,10 @@ data/*.db-journal
 data/*.db-wal
 data/*.db-shm
 
+# Per-site runtime locks (e.g. webhook-worker.lock, Phase 14 round D)
+data/*.lock
+data/*.log
+
 # Per-site uploads — dir kept via .gitkeep, user files excluded
 site/public/uploads/*
 !site/public/uploads/.gitkeep

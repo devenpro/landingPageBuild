@@ -166,6 +166,7 @@ admin_head('Forms', 'forms');
                         $hook = $r['webhook_status'] ?? null;
                         $hook_class = match ($hook) {
                             'sent'    => 'bg-emerald-50 text-emerald-700',
+                            'queued'  => 'bg-amber-50 text-amber-700',
                             'failed'  => 'bg-red-50 text-red-700',
                             'skipped' => 'bg-ink-100 text-ink-500',
                             default   => 'bg-ink-100 text-ink-400',
