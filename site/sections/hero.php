@@ -18,7 +18,7 @@
                 <a href="#waitlist"
                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:w-auto">
                     <span data-edit="text" data-key="hero.cta_label"><?= e(c('hero.cta_label')) ?></span>
-                    <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i>
+                    <?= lucide('arrow-right', 'h-4 w-4') ?>
                 </a>
                 <a href="#how"
                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-ink-200 bg-white px-6 py-3 text-base font-medium text-ink-700 hover:border-ink-300 hover:bg-ink-50 sm:w-auto">
@@ -30,12 +30,19 @@
         <div class="mt-14 sm:mt-20">
             <div class="relative mx-auto max-w-5xl">
                 <div class="absolute -inset-x-4 -top-4 -bottom-4 rounded-3xl bg-gradient-to-tr from-brand-200/50 via-brand-100/30 to-transparent blur-2xl" aria-hidden="true"></div>
+                <?php // width/height are placeholder intrinsic dimensions — they
+                      // reserve aspect-ratio space for the image before it loads
+                      // (eliminates CLS). The `w-full h-auto` Tailwind classes
+                      // override the rendered size; only the ratio matters here.
+                ?>
                 <img src="<?= e(c('hero.image')) ?>"
                      alt="<?= e(c('hero.image_alt')) ?>"
                      data-edit="image" data-key="hero.image"
-                     class="relative w-full rounded-2xl border border-ink-100 bg-white shadow-2xl shadow-brand-900/5"
+                     width="1600" height="1000"
+                     class="relative h-auto w-full rounded-2xl border border-ink-100 bg-white shadow-2xl shadow-brand-900/5"
                      loading="eager"
-                     fetchpriority="high">
+                     fetchpriority="high"
+                     decoding="async">
             </div>
         </div>
     </div>

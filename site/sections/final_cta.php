@@ -99,7 +99,7 @@
             <button id="waitlist-submit" type="submit"
                     class="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
                 <span id="waitlist-submit-label" data-edit="text" data-key="form.submit_label"><?= e(c('form.submit_label')) ?></span>
-                <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i>
+                <?= lucide('arrow-right', 'h-4 w-4') ?>
             </button>
 
             <p class="text-center text-xs text-ink-500">
@@ -113,7 +113,7 @@
         <div id="form-success" hidden
              class="mx-auto mt-10 max-w-md rounded-2xl border border-brand-200 bg-white p-8 text-center shadow-sm">
             <div class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-100 text-brand-700">
-                <i data-lucide="check" class="h-6 w-6" aria-hidden="true"></i>
+                <?= lucide('check', 'h-6 w-6') ?>
             </div>
             <h3 class="mt-4 text-xl font-semibold text-ink-900">
                 <span data-edit="text" data-key="form.success_heading"><?= e(c('form.success_heading')) ?></span>

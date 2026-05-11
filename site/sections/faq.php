@@ -15,7 +15,7 @@
                 <details class="group p-5 sm:p-6">
                     <summary class="flex cursor-pointer items-center justify-between gap-4 text-left text-base font-medium text-ink-900 [&::-webkit-details-marker]:hidden">
                         <span data-edit="text" data-key="faq.<?= $i ?>.q"><?= e(c("faq.$i.q")) ?></span>
-                        <i data-lucide="chevron-down" class="h-5 w-5 shrink-0 text-ink-500 transition group-open:rotate-180" aria-hidden="true"></i>
+                        <?= lucide('chevron-down', 'h-5 w-5 shrink-0 text-ink-500 transition group-open:rotate-180') ?>
                     </summary>
                     <p class="mt-3 text-sm leading-relaxed text-ink-600">
                         <span data-edit="text" data-key="faq.<?= $i ?>.a"><?= e(c("faq.$i.a")) ?></span>
