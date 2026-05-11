@@ -279,18 +279,23 @@ try {
     ]);
     $page_id = (int)$pdo->lastInsertId();
 
+    // v2 Stage 3: page-scoped content now lives in page_fields, not the
+    // renamed content_blocks. Strip the "page.<slug>." prefix from each
+    // built key and write to page_fields(page_id, field_key, value, type).
     $upsert = $pdo->prepare(
-        'INSERT INTO content_blocks (key, value, type, updated_at, updated_by)
-         VALUES (:k, :v, :t, CURRENT_TIMESTAMP, :u)
-         ON CONFLICT(key) DO UPDATE SET
+        'INSERT INTO page_fields (page_id, field_key, value, type, updated_at, updated_by)
+         VALUES (:p, :k, :v, :t, CURRENT_TIMESTAMP, :u)
+         ON CONFLICT(page_id, field_key) DO UPDATE SET
             value      = excluded.value,
             type       = excluded.type,
             updated_at = CURRENT_TIMESTAMP,
             updated_by = excluded.updated_by'
     );
+    $prefix_len = strlen($prefix) + 1; // "page.<slug>" + "."
     foreach ($kv as $k => $v) {
         $upsert->execute([
-            ':k' => $k,
+            ':p' => $page_id,
+            ':k' => substr($k, $prefix_len),
             ':v' => $v,
             ':t' => $kv_types[$k] ?? 'text',
             ':u' => (int)$user['id'],

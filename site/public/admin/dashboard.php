@@ -14,7 +14,9 @@ $user = auth_current_user();
 
 // Quick stats
 $pdo = db();
-$content_count = (int) $pdo->query('SELECT COUNT(*) FROM content_blocks')->fetchColumn();
+// v2 Stage 3: content_blocks now holds block definitions; field values
+// moved to content_block_fields. Count fields for the "content rows" stat.
+$content_count = (int) $pdo->query('SELECT COUNT(*) FROM content_block_fields')->fetchColumn();
 $pages_count   = (int) $pdo->query("SELECT COUNT(*) FROM pages WHERE status = 'published'")->fetchColumn();
 $forms_count   = (int) $pdo->query('SELECT COUNT(*) FROM form_submissions')->fetchColumn();
 

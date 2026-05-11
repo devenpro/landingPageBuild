@@ -18,12 +18,23 @@ require __DIR__ . '/_layout.php';
 auth_require_login();
 
 $pdo = db();
+
+// v2 Stage 3: content_blocks → block definitions, content_block_fields → field
+// values. Reconstruct the flat (key, value, type, updated_at) view this page
+// expects by joining the two tables. The flat key is "<block_slug>.<field_key>".
+// The new /admin/blocks.php is the block-aware UI; this page remains as a
+// flat editor for compatibility while v1 callers migrate.
 $rows = $pdo->query(
-    'SELECT key, value, type, updated_at FROM content_blocks ORDER BY key'
+    "SELECT (cb.slug || '.' || cbf.field_key) AS key,
+            cbf.value, cbf.type, cbf.updated_at
+       FROM content_block_fields cbf
+       JOIN content_blocks cb ON cb.id = cbf.block_id
+      WHERE cb.status = 'active'
+      ORDER BY cb.slug, cbf.field_key"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 // Group by section prefix. Keys like "feature.1.title" group under "feature";
-// keys like "hero.headline" group under "hero". Bare keys (no dot) go under "_misc".
+// keys like "hero.headline" group under "hero".
 $groups = [];
 foreach ($rows as $r) {
     $section = strpos($r['key'], '.') !== false
