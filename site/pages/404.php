@@ -13,7 +13,7 @@ layout_head($page ?? null);
 require __DIR__ . '/../sections/navbar.php';
 ?>
 
-<main class="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-4 py-16 text-center sm:px-6">
+<main id="main-content" class="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-4 py-16 text-center sm:px-6">
     <p class="mb-3 text-sm font-medium uppercase tracking-wider text-brand-700">404</p>
     <h1 class="text-4xl font-semibold tracking-tight text-ink-900 sm:text-5xl">Page not found</h1>
     <p class="mt-4 max-w-xl text-lg text-ink-600">
@@ -21,7 +21,7 @@ require __DIR__ . '/../sections/navbar.php';
     </p>
     <div class="mt-8">
         <a href="/"
-           class="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2">
+           class="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
             <i data-lucide="arrow-left" class="h-4 w-4" aria-hidden="true"></i>
             Back to home
         </a>

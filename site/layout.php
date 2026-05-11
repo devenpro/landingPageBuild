@@ -84,6 +84,10 @@ function layout_head(?array $page = null): void
           // core/build/build-css.sh whenever a new class or token is introduced. ?>
 </head>
 <body class="font-sans bg-white text-ink-800 antialiased<?= $is_editor ? ' edit-mode pb-16' : '' ?>">
+<a href="#main-content"
+   class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-ink-900 focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+    Skip to main content
+</a>
 <?php
 }
 

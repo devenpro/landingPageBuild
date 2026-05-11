@@ -301,7 +301,7 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
                             'published' => 'bg-emerald-50 text-emerald-700',
                             'draft'     => 'bg-amber-50 text-amber-700',
                             'archived'  => 'bg-ink-100 text-ink-500',
-                            default     => 'bg-ink-100 text-ink-400',
+                            default     => 'bg-ink-100 text-ink-500',
                         };
                     ?>
                         <tr class="align-top hover:bg-ink-50/40">
@@ -312,7 +312,7 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
                             <td class="px-4 py-3 text-xs">
                                 <span class="rounded bg-brand-50 px-1.5 py-0.5 font-medium uppercase tracking-wider text-brand-700"><?= $type ?></span>
                                 <?php if ($type === 'file'): ?>
-                                    <code class="ml-1 text-ink-400"><?= e((string)$r['file_path']) ?></code>
+                                    <code class="ml-1 text-ink-500"><?= e((string)$r['file_path']) ?></code>
                                 <?php endif; ?>
                             </td>
                             <td class="px-4 py-3">
@@ -368,8 +368,8 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
                 <input id="slug" name="slug" type="text" required maxlength="200"
                        value="<?= e($form['slug']) ?>"
                        placeholder="services/seo-bangalore"
-                       class="w-full rounded-lg border <?= isset($errors['slug']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
-                <p class="mt-1 text-xs <?= isset($errors['slug']) ? 'text-red-600' : 'text-ink-400' ?>">
+                       class="w-full rounded-lg border <?= isset($errors['slug']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <p class="mt-1 text-xs <?= isset($errors['slug']) ? 'text-red-600' : 'text-ink-500' ?>">
                     <?= isset($errors['slug']) ? e($errors['slug']) : 'Lowercase, hyphens or slashes only. Used as the URL path.' ?>
                 </p>
             </div>
@@ -377,7 +377,7 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
                 <label for="title" class="mb-1.5 block text-sm font-medium text-ink-800">Title <span class="text-brand-600">*</span></label>
                 <input id="title" name="title" type="text" required maxlength="200"
                        value="<?= e($form['title']) ?>"
-                       class="w-full rounded-lg border <?= isset($errors['title']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                       class="w-full rounded-lg border <?= isset($errors['title']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                 <?php if (isset($errors['title'])): ?>
                     <p class="mt-1 text-xs text-red-600"><?= e($errors['title']) ?></p>
                 <?php endif; ?>
@@ -404,7 +404,7 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
                 <label for="layout" class="mb-1.5 block text-sm font-medium text-ink-800">Layout</label>
                 <input id="layout" name="layout" type="text" value="<?= e($form['layout']) ?>"
                        class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm">
-                <p class="mt-1 text-xs text-ink-400">Reserved; only "default" is used today.</p>
+                <p class="mt-1 text-xs text-ink-500">Reserved; only "default" is used today.</p>
             </div>
         </div>
 
@@ -412,8 +412,8 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
             <label for="file_path" class="mb-1.5 block text-sm font-medium text-ink-800">File path (under <code>site/pages/</code>)</label>
             <input id="file_path" name="file_path" type="text" value="<?= e($form['file_path']) ?>"
                    placeholder="home.php"
-                   class="w-full rounded-lg border <?= isset($errors['file_path']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm text-ink-900 font-mono focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
-            <p class="mt-1 text-xs <?= isset($errors['file_path']) ? 'text-red-600' : 'text-ink-400' ?>">
+                   class="w-full rounded-lg border <?= isset($errors['file_path']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm text-ink-900 font-mono focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <p class="mt-1 text-xs <?= isset($errors['file_path']) ? 'text-red-600' : 'text-ink-500' ?>">
                 <?= isset($errors['file_path']) ? e($errors['file_path']) : 'e.g. home.php, contact.php. Must already exist in site/pages/.' ?>
             </p>
         </div>
@@ -422,8 +422,8 @@ admin_head($action === 'list' ? 'Pages' : ($action === 'new' ? 'New page' : 'Edi
             <label for="sections_json" class="mb-1.5 block text-sm font-medium text-ink-800">Sections (JSON array)</label>
             <textarea id="sections_json" name="sections_json" rows="4"
                       placeholder='["navbar","hero","features","footer"]'
-                      class="w-full resize-y rounded-lg border <?= isset($errors['sections_json']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm font-mono text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"><?= e($form['sections_json']) ?></textarea>
-            <p class="mt-1 text-xs <?= isset($errors['sections_json']) ? 'text-red-600' : 'text-ink-400' ?>">
+                      class="w-full resize-y rounded-lg border <?= isset($errors['sections_json']) ? 'border-red-400' : 'border-ink-200' ?> bg-white px-3 py-2.5 text-sm font-mono text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"><?= e($form['sections_json']) ?></textarea>
+            <p class="mt-1 text-xs <?= isset($errors['sections_json']) ? 'text-red-600' : 'text-ink-500' ?>">
                 <?= isset($errors['sections_json']) ? e($errors['sections_json']) : 'Each entry must be a section name (matches a file in site/sections/). Override per-page content with content keys prefixed page.<slug>.<section>.<field>.' ?>
             </p>
         </div>

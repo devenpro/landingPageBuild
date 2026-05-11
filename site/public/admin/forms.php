@@ -128,7 +128,8 @@ admin_head('Forms', 'forms');
     <form method="get" action="/admin/forms.php" class="mt-5 flex flex-wrap items-center gap-2">
         <input type="search" name="q" value="<?= e($q) ?>"
                placeholder="Search name, email, phone, role, bottleneck…"
-               class="w-72 max-w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+               aria-label="Search submissions"
+               class="w-72 max-w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
         <button type="submit" class="rounded-lg bg-ink-900 px-3 py-2 text-sm font-medium text-white hover:bg-ink-800">Search</button>
         <?php if ($q !== ''): ?>
             <a href="/admin/forms.php" class="text-sm text-ink-500 hover:text-ink-800">Clear</a>
@@ -169,7 +170,7 @@ admin_head('Forms', 'forms');
                             'queued'  => 'bg-amber-50 text-amber-700',
                             'failed'  => 'bg-red-50 text-red-700',
                             'skipped' => 'bg-ink-100 text-ink-500',
-                            default   => 'bg-ink-100 text-ink-400',
+                            default   => 'bg-ink-100 text-ink-500',
                         };
                     ?>
                         <tr class="form-row align-top hover:bg-ink-50/40">
@@ -198,9 +199,9 @@ admin_head('Forms', 'forms');
                                             </div>
                                         <?php endif; ?>
                                         <div class="grid gap-2 text-ink-500 sm:grid-cols-3">
-                                            <div><span class="text-ink-400">IP:</span> <?= e((string)($r['ip_address'] ?? '—')) ?></div>
-                                            <div><span class="text-ink-400">Referrer:</span> <?= e((string)($r['referrer'] ?? '—')) ?></div>
-                                            <div class="truncate" title="<?= e((string)($r['user_agent'] ?? '')) ?>"><span class="text-ink-400">UA:</span> <?= e((string)($r['user_agent'] ?? '—')) ?></div>
+                                            <div><span class="text-ink-500">IP:</span> <?= e((string)($r['ip_address'] ?? '—')) ?></div>
+                                            <div><span class="text-ink-500">Referrer:</span> <?= e((string)($r['referrer'] ?? '—')) ?></div>
+                                            <div class="truncate" title="<?= e((string)($r['user_agent'] ?? '')) ?>"><span class="text-ink-500">UA:</span> <?= e((string)($r['user_agent'] ?? '—')) ?></div>
                                         </div>
                                     </div>
                                 </td>
@@ -215,19 +216,19 @@ admin_head('Forms', 'forms');
             <nav class="mt-5 flex items-center justify-between text-sm" aria-label="Pagination">
                 <span class="text-ink-500">
                     Page <?= $page ?> of <?= $last_page ?>
-                    <span class="text-ink-400">·</span>
+                    <span class="text-ink-500">·</span>
                     Showing <?= $offset + 1 ?>–<?= min($offset + count($rows), $matched) ?> of <?= $matched ?>
                 </span>
                 <div class="flex items-center gap-1">
                     <?php if ($page > 1): ?>
                         <a href="<?= e(forms_url($q, $page - 1)) ?>" class="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-ink-700 hover:border-brand-300 hover:bg-brand-50">← Prev</a>
                     <?php else: ?>
-                        <span class="rounded-md border border-ink-100 bg-ink-50 px-3 py-1.5 text-ink-300">← Prev</span>
+                        <span class="rounded-md border border-ink-100 bg-ink-50 px-3 py-1.5 text-ink-500">← Prev</span>
                     <?php endif; ?>
                     <?php if ($page < $last_page): ?>
                         <a href="<?= e(forms_url($q, $page + 1)) ?>" class="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-ink-700 hover:border-brand-300 hover:bg-brand-50">Next →</a>
                     <?php else: ?>
-                        <span class="rounded-md border border-ink-100 bg-ink-50 px-3 py-1.5 text-ink-300">Next →</span>
+                        <span class="rounded-md border border-ink-100 bg-ink-50 px-3 py-1.5 text-ink-500">Next →</span>
                     <?php endif; ?>
                 </div>
             </nav>

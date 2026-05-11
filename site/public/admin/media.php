@@ -52,6 +52,7 @@ admin_head('Media', 'media');
     <section class="mt-6 rounded-2xl border border-dashed border-ink-200 bg-white p-5">
         <form id="media-upload" class="flex flex-wrap items-center gap-3 text-sm">
             <input type="file" name="file" required
+                   aria-label="Choose media file to upload"
                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,video/mp4,video/webm"
                    class="block text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700">
             <button type="submit"
@@ -79,7 +80,7 @@ admin_head('Media', 'media');
                             <img src="<?= e($url) ?>" alt="<?= e((string)$r['original_name']) ?>" loading="lazy"
                                  class="h-full w-full object-cover">
                         <?php else: ?>
-                            <div class="grid h-full w-full place-items-center text-ink-400">
+                            <div class="grid h-full w-full place-items-center text-ink-500">
                                 <div class="text-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto h-10 w-10"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
                                     <div class="mt-1 text-xs uppercase tracking-wider"><?= e((string)$r['kind']) ?></div>

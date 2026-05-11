@@ -69,17 +69,17 @@ http_response_code($error !== '' ? 401 : 200);
                     <label for="email" class="mb-1.5 block text-sm font-medium text-ink-800">Email</label>
                     <input id="email" name="email" type="email" required maxlength="150" autofocus autocomplete="email"
                            value="<?= e($email_in) ?>"
-                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div>
                     <label for="password" class="mb-1.5 block text-sm font-medium text-ink-800">Password</label>
                     <input id="password" name="password" type="password" required minlength="8" autocomplete="current-password"
-                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
             </div>
 
             <button type="submit"
-                    class="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2">
+                    class="mt-6 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
                 Sign in
             </button>
 
