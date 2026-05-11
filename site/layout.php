@@ -33,6 +33,16 @@ function layout_head(?array $page = null): void
     <title><?= e($title) ?></title>
     <meta name="description" content="<?= e($desc) ?>">
 
+    <?php
+    // v2 Stage 4: routable content entries (e.g. Ad Landing Pages) can opt
+    // out of indexing by setting $page['robots'] = 'noindex,nofollow'. Falls
+    // back to no robots meta tag (= default crawl + index).
+    $robots = $page['robots'] ?? null;
+    if ($robots !== null && $robots !== ''):
+    ?>
+    <meta name="robots" content="<?= e((string)$robots) ?>">
+    <?php endif; ?>
+
     <link rel="canonical" href="<?= e($url) ?>">
 
     <meta property="og:title" content="<?= e($title) ?>">

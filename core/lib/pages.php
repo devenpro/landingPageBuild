@@ -19,6 +19,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/content.php';
+require_once __DIR__ . '/content/types.php';
+require_once __DIR__ . '/content/entries.php';
 
 function parse_slug(string $request_uri): string
 {
@@ -48,20 +50,120 @@ function route_request(?string $request_uri = null): void
 {
     $uri = $request_uri ?? ($_SERVER['REQUEST_URI'] ?? '/');
     $slug = parse_slug($uri);
-    $page = get_page_by_slug($slug);
 
+    // 1. Pages win on slug collision.
+    $page = get_page_by_slug($slug);
+    if ($page !== null) {
+        render_page($page);
+        return;
+    }
+
+    // 2. v2 Stage 4: try each routable content type's route_pattern.
+    $match = content_resolve_route($uri);
+    if ($match !== null) {
+        render_content_entry($match['type'], $match['entry']);
+        return;
+    }
+
+    // 3. 404
+    http_response_code(404);
+    $page = get_page_by_slug('404');
     if ($page === null) {
-        http_response_code(404);
-        $page = get_page_by_slug('404');
-        if ($page === null) {
-            echo '<!DOCTYPE html><meta charset="utf-8"><title>Page not found</title>';
-            echo '<h1>404 — Page not found</h1>';
-            echo '<p>The site has no 404 page configured. Run migrations.</p>';
-            return;
-        }
+        echo '<!DOCTYPE html><meta charset="utf-8"><title>Page not found</title>';
+        echo '<h1>404 — Page not found</h1>';
+        echo '<p>The site has no 404 page configured. Run migrations.</p>';
+        return;
     }
 
     render_page($page);
+}
+
+/**
+ * Try to match the request URI against every routable content type's
+ * route_pattern. Returns ['type' => row, 'entry' => row, 'params' => [...]]
+ * or null on no match. Supports single-segment {slug} placeholders for
+ * Stage 4; Stage 5 extends this for multi-segment patterns (location services).
+ */
+function content_resolve_route(string $uri): ?array
+{
+    $path = parse_url($uri, PHP_URL_PATH);
+    if (!is_string($path)) {
+        return null;
+    }
+    $path = '/' . trim($path, '/');
+    if ($path === '/') {
+        return null;
+    }
+
+    foreach (content_types_routable() as $type) {
+        $pattern = (string)($type['route_pattern'] ?? '');
+        if ($pattern === '') continue;
+
+        $regex = preg_quote('/' . trim($pattern, '/'), '#');
+        // Replace {placeholder} (after quoting) with a capture group.
+        $regex = preg_replace(
+            '/\\\\\\{([a-z_]+)\\\\\\}/',
+            '(?<$1>[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)',
+            $regex
+        );
+        if (!preg_match('#^' . $regex . '$#', $path, $m)) {
+            continue;
+        }
+
+        $slug = $m['slug'] ?? null;
+        if ($slug === null) continue;
+
+        $entry = content_entry_by_slug((int)$type['id'], $slug, 'published');
+        if ($entry !== null) {
+            return ['type' => $type, 'entry' => $entry, 'params' => $m];
+        }
+    }
+    return null;
+}
+
+/**
+ * Render a routable content entry. Looks up the type's detail_partial under
+ * site/sections/, exposes $entry / $type / $data as globals for the partial,
+ * and wraps it in the standard site layout.
+ */
+function render_content_entry(array $type, array $entry): void
+{
+    $detail = (string)($type['detail_partial'] ?? '');
+    if ($detail === '' || !preg_match('/^[a-z0-9_]+$/', $detail)) {
+        http_response_code(500);
+        echo 'Content type misconfigured: invalid detail_partial';
+        return;
+    }
+    $partial = GUA_SITE_PATH . '/sections/' . $detail . '.php';
+    if (!is_file($partial)) {
+        http_response_code(500);
+        echo 'Content type misconfigured: detail_partial file not found';
+        return;
+    }
+
+    // Synthesise a $page-shaped row for the layout. Layout reads slug,
+    // title, seo_*, and (for sitemap/canonical) is mostly happy with these.
+    $page = [
+        'slug'            => 'entry/' . (string)$type['slug'] . '/' . (string)$entry['slug'],
+        'title'           => (string)$entry['title'],
+        'seo_title'       => (string)($entry['seo_title']       ?: $entry['title']),
+        'seo_description' => (string)($entry['seo_description'] ?: ''),
+        'seo_og_image'    => $entry['seo_og_image'] ?? null,
+        'robots'          => $entry['robots']       ?? null,
+        'is_file_based'   => 0,
+        'sections_json'   => null,
+        'meta_json'       => null,
+    ];
+
+    // Expose the entry and decoded data for the partial.
+    $GLOBALS['gua_content_entry'] = $entry;
+    $GLOBALS['gua_content_type']  = $type;
+    $GLOBALS['gua_content_data']  = content_entry_data($entry);
+
+    require GUA_SITE_PATH . '/layout.php';
+    layout_head($page);
+    require $partial;
+    layout_foot();
 }
 
 function render_page(array $page): void

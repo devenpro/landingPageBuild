@@ -207,8 +207,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 0 | Framing cleanup — remove stale "landing page builder" wording | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.0.1 |
 | 1 | Settings foundation | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.1.0 |
 | 2 | Brand Context Library | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.2.0 |
-| 3 | Content blocks rework | 🚧 | `v2/stage-3-blocks` (stacked on #23) | 1.3.0 |
-| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Location Services, Ad Landing Pages) | ⏳ | — | 1.4.0 |
+| 3 | Content blocks rework | 🟡 | [#24](https://github.com/devenpro/landingPageBuild/pull/24) (stacked on #23) | 1.3.0 |
+| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🚧 | `v2/stage-4-content-types` (stacked on #24) | 1.4.0 |
 | 5 | Taxonomy | ⏳ | — | 1.5.0 |
 | 6 | Forms builder | ⏳ | — | 1.6.0 |
 | 7 | Media v2 (crop/resize/WebP) | ⏳ | — | 1.7.0 |
@@ -340,3 +340,37 @@ Splits the v1 flat `content_blocks(key, value, type)` table into three tables: r
 **Smoke test** — `core/scripts/test_stage_3.php` (14 assertions): all four tables exist, non-page legacy row count == new field row count, `c()` resolves migrated keys for hero / faq / feature partials, `block_get()` works, page_fields override beats block field when `content_set_prefix('page.home')` is set, legacy_content read-fallback covers rows not in the new tables. End-to-end manual verification: dev server boot → homepage 200 with all hero / features / faq content present → admin login 302 → admin/blocks.php renders all 15 blocks → faq block detail shows correct fields → API block-create round-trip works.
 
 **Rollback**: tricky because the rename is destructive on the v1 schema. Path: copy `legacy_content` rows back into a freshly-created v1-shaped `content_blocks` table, drop the v2 tables. `rollback_blocks.php` is a one-liner script left for a future stage; for now treat the rename as one-way.
+
+### v2 Stage 4 — Content types + Content Manage hub 🚧 (`v2/stage-4-content-types`, stacked on #24)
+
+First-class content types replace v1's "everything is a page" model. v1 stored testimonials as ad-hoc `content_blocks` rows and had no first-class home for ad landing pages. Stage 4 ships three built-in types: Testimonials (non-routable), Services (routable `/services/{slug}`), and Ad Landing Pages (routable `/lp/{slug}`). Location Services is deferred to Stage 5 since it depends on taxonomy.
+
+**Schema** (`core/migrations/0009_content_types.sql`)
+- `content_types(id, slug UNIQUE, name, description, is_routable, route_pattern, detail_partial, list_partial, schema_json, is_builtin, status, sort_order, ...)` — type registry.
+- `content_entries(id, type_id, slug, title, data_json, seo_title, seo_description, seo_og_image, robots, status, position, ...)` UNIQUE(type_id, slug). `slug` nullable for non-routable types. `data_json` holds type-specific fields whose shape is documented in the type's `schema_json` (used by the admin form renderer).
+- Trigger `trg_ad_lp_default_robots` sets `robots='noindex,nofollow'` on every new ad-landing-pages entry where the field wasn't explicitly provided, so paid-traffic pages don't compete with organic SEO out of the box.
+
+**Library** (`core/lib/content/`)
+- `types.php` — read-only registry (`content_types_all`, `content_type_by_slug`, `content_types_routable`, `content_type_fields` decoding `schema_json`).
+- `entries.php` — CRUD with slug validation (same regex as Stage 2), status enum, JSON round-trip for `data_json`. `content_entry_update()` merges with the existing row so the API can pass only the fields it owns.
+
+**Routing** (`core/lib/pages.php`)
+- `route_request()` now: 1) match `pages.slug`, 2) match each routable content type's `route_pattern`, 3) 404. Pages still win on slug collision.
+- `content_resolve_route($uri)` quotes the pattern, swaps `{placeholder}` for a named-capture slug regex, and looks up the published entry. Returns `['type' => …, 'entry' => …, 'params' => […]]`.
+- `render_content_entry($type, $entry)` synthesises a `$page`-shaped array for the layout, exposes `$gua_content_entry / $gua_content_type / $gua_content_data` to the partial, then includes `site/sections/<detail_partial>.php` between `layout_head` and `layout_foot`.
+
+**Frontend**
+- `site/layout.php` — emits `<meta name="robots" content="…">` when `$page['robots']` is set (used by Ad LPs).
+- `site/sections/service_detail.php` — hero / long description / features / FAQs. Pulls from `$gua_content_data`.
+- `site/sections/ad_lp_detail.php` — hero / benefits / CTAs. Injects Meta Pixel + Google Tag `<script>` tags only when the corresponding fields are set. Wires `fbq('track', conversion_event)` into the primary CTA's onclick.
+
+**Admin**
+- `/admin/content-types.php` — three-pane hub (types rail / entries list / entry editor). Form fields rendered from the type's `schema_json` so per-type fields appear automatically. Optional SEO + robots collapsible. New-entry mini-form below the editor.
+- `/api/content/entries.php` — form-driven CRUD (create / update / delete). The update handler only writes the optional `seo_*` and `robots` fields when the form actually submits them, so the create trigger's default doesn't get clobbered on subsequent saves.
+- `_layout.php` nav: 'Types' between 'Blocks' and 'Pages'.
+
+**Verification**
+- `core/scripts/test_stage_4.php` — 24 assertions covering schema, seed, CRUD, slug validation, data_json round-trip, routing (positive + negative), Ad LP default robots trigger. All pass.
+- End-to-end: created a Service entry via the admin API; GET `/services/local-seo-audit` → 200 with title in `<title>`, meta description, hero + CTA + features. Created an Ad LP; GET `/lp/bf-2025-test` → 200 with `<meta name="robots" content="noindex,nofollow">`, Meta Pixel + Google Tag scripts, primary CTA wired to `fbq('track', conversion_event)`.
+
+**Rollback**: revert the commit and `DROP TABLE content_entries; DROP TABLE content_types; DROP TRIGGER IF EXISTS trg_ad_lp_default_robots;`. Routing falls back to pages-only; the 3 detail partials remain in `site/sections/` but become unreachable. No data migration to undo since v1 had no content_types data.
