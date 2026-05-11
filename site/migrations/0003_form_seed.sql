@@ -3,7 +3,7 @@
 -- adds field labels, dropdown options (JSON lists), and success-state copy.
 -- ON CONFLICT(key) DO NOTHING so admin edits to these survive re-seeds.
 
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('form.full_name_label',       'Full name',                                            'text'),
   ('form.email_label',           'Email',                                                'text'),
   ('form.phone_label',           'WhatsApp / Phone',                                     'text'),
