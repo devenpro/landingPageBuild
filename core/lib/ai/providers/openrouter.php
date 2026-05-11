@@ -18,13 +18,17 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config.php';
 
-const GUA_OPENROUTER_DEFAULT_MODEL = 'anthropic/claude-3.5-haiku';
-const GUA_OPENROUTER_ENDPOINT      = 'https://openrouter.ai/api/v1/chat/completions';
-const GUA_OPENROUTER_TIMEOUT_SEC   = 60;
+const GUA_OPENROUTER_DEFAULT_MODEL_FALLBACK = 'anthropic/claude-3.5-haiku';
+const GUA_OPENROUTER_ENDPOINT               = 'https://openrouter.ai/api/v1/chat/completions';
+const GUA_OPENROUTER_MODELS_ENDPOINT        = 'https://openrouter.ai/api/v1/models';
+const GUA_OPENROUTER_TIMEOUT_SEC            = 60;
 
 function ai_provider_openrouter_chat(string $api_key, array $messages, array $opts = []): array
 {
-    $model = (string)($opts['model'] ?? GUA_OPENROUTER_DEFAULT_MODEL);
+    $model = (string)($opts['model'] ?? (defined('GUA_OPENROUTER_DEFAULT_MODEL') ? GUA_OPENROUTER_DEFAULT_MODEL : ''));
+    if ($model === '') {
+        $model = GUA_OPENROUTER_DEFAULT_MODEL_FALLBACK;
+    }
 
     $clean = [];
     foreach ($messages as $m) {
@@ -96,4 +100,53 @@ function ai_provider_openrouter_chat(string $api_key, array $messages, array $op
         'cost_usd'   => 0.0,
         'raw'        => $resp,
     ];
+}
+
+/**
+ * Fetch the full OpenRouter model catalogue (v2 Stage 8).
+ * OpenRouter exposes its models list without auth; we still send the
+ * bearer header to surface any account-level filtering they enable.
+ */
+function ai_provider_openrouter_list_models(string $api_key): array
+{
+    $headers = ['Accept: application/json'];
+    if ($api_key !== '') {
+        $headers[] = 'Authorization: Bearer ' . $api_key;
+    }
+
+    $ch = curl_init(GUA_OPENROUTER_MODELS_ENDPOINT);
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => GUA_OPENROUTER_TIMEOUT_SEC,
+    ]);
+    $raw   = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $err   = curl_error($ch);
+    $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($errno !== 0) {
+        throw new RuntimeException("OpenRouter transport error ($errno): $err");
+    }
+    if ($code < 200 || $code >= 300) {
+        throw new RuntimeException("OpenRouter models HTTP $code: " . substr((string)$raw, 0, 300));
+    }
+    $resp = json_decode((string)$raw, true);
+    if (!is_array($resp) || !isset($resp['data']) || !is_array($resp['data'])) {
+        throw new RuntimeException('OpenRouter models endpoint returned unexpected shape.');
+    }
+
+    $models = [];
+    foreach ($resp['data'] as $row) {
+        $id = (string)($row['id'] ?? '');
+        if ($id === '') continue;
+        $models[] = [
+            'id'             => $id,
+            'label'          => (string)($row['name'] ?? $id),
+            'context_window' => (int)($row['context_length'] ?? 0),
+        ];
+    }
+    usort($models, fn($a, $b) => strcmp($a['id'], $b['id']));
+    return $models;
 }
