@@ -52,6 +52,21 @@ if (!defined('GUA_AI_DEFAULT_PROVIDER')) {
 if (!defined('GUA_HF_DEFAULT_MODEL')) {
     define('GUA_HF_DEFAULT_MODEL', (string)settings_get('hf_default_model', 'meta-llama/Llama-3.3-70B-Instruct'));
 }
+if (!defined('GUA_GEMINI_DEFAULT_MODEL')) {
+    define('GUA_GEMINI_DEFAULT_MODEL', (string)settings_get('gemini_default_model', 'gemini-2.5-flash'));
+}
+if (!defined('GUA_OPENROUTER_DEFAULT_MODEL')) {
+    define('GUA_OPENROUTER_DEFAULT_MODEL', (string)settings_get('openrouter_default_model', 'anthropic/claude-3.5-haiku'));
+}
+if (!defined('GUA_ANTHROPIC_DEFAULT_MODEL')) {
+    define('GUA_ANTHROPIC_DEFAULT_MODEL', (string)settings_get('anthropic_default_model', 'claude-haiku-4-5-20251001'));
+}
+if (!defined('GUA_OPENAI_DEFAULT_MODEL')) {
+    define('GUA_OPENAI_DEFAULT_MODEL', (string)settings_get('openai_default_model', 'gpt-4o-mini'));
+}
+if (!defined('GUA_GROK_DEFAULT_MODEL')) {
+    define('GUA_GROK_DEFAULT_MODEL', (string)settings_get('grok_default_model', 'grok-2-latest'));
+}
 if (!defined('GUA_AI_CHAT_ENABLED')) {
     define('GUA_AI_CHAT_ENABLED', (bool)settings_get('ai_chat_enabled', false));
 }

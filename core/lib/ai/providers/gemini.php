@@ -16,13 +16,17 @@
 
 declare(strict_types=1);
 
-const GUA_GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
-const GUA_GEMINI_ENDPOINT      = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const GUA_GEMINI_TIMEOUT_SEC   = 30;
+const GUA_GEMINI_DEFAULT_MODEL_FALLBACK = 'gemini-2.5-flash';
+const GUA_GEMINI_ENDPOINT               = 'https://generativelanguage.googleapis.com/v1beta/models/';
+const GUA_GEMINI_MODELS_LIST            = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GUA_GEMINI_TIMEOUT_SEC            = 30;
 
 function ai_provider_gemini_chat(string $api_key, array $messages, array $opts = []): array
 {
-    $model = (string)($opts['model'] ?? GUA_GEMINI_DEFAULT_MODEL);
+    $model = (string)($opts['model'] ?? (defined('GUA_GEMINI_DEFAULT_MODEL') ? GUA_GEMINI_DEFAULT_MODEL : ''));
+    if ($model === '') {
+        $model = GUA_GEMINI_DEFAULT_MODEL_FALLBACK;
+    }
 
     $system_text = '';
     $contents    = [];
@@ -106,4 +110,54 @@ function ai_provider_gemini_chat(string $api_key, array $messages, array $opts =
         'cost_usd'   => 0.0,
         'raw'        => $resp,
     ];
+}
+
+/**
+ * Fetch the model list (v2 Stage 8). Filtered to entries that include
+ * "generateContent" in supportedGenerationMethods (so embeddings,
+ * image, etc. are excluded).
+ */
+function ai_provider_gemini_list_models(string $api_key): array
+{
+    $url = GUA_GEMINI_MODELS_LIST . '?pageSize=200&key=' . rawurlencode($api_key);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => GUA_GEMINI_TIMEOUT_SEC,
+    ]);
+    $raw   = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $err   = curl_error($ch);
+    $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($errno !== 0) {
+        throw new RuntimeException("Gemini transport error ($errno): $err");
+    }
+    if ($code < 200 || $code >= 300) {
+        throw new RuntimeException("Gemini models HTTP $code: " . substr((string)$raw, 0, 300));
+    }
+    $resp = json_decode((string)$raw, true);
+    if (!is_array($resp) || !isset($resp['models']) || !is_array($resp['models'])) {
+        throw new RuntimeException('Gemini models endpoint returned unexpected shape.');
+    }
+
+    $models = [];
+    foreach ($resp['models'] as $row) {
+        $full = (string)($row['name'] ?? '');
+        if ($full === '') continue;
+        $methods = $row['supportedGenerationMethods'] ?? [];
+        if (!in_array('generateContent', $methods, true)) continue;
+        $id    = preg_replace('#^models/#', '', $full);
+        $label = (string)($row['displayName'] ?? $id);
+        $models[] = [
+            'id'              => $id,
+            'label'           => $label,
+            'context_window'  => (int)($row['inputTokenLimit'] ?? 0),
+        ];
+    }
+    usort($models, fn($a, $b) => strcmp($b['id'], $a['id']));
+    return $models;
 }

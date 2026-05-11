@@ -16,7 +16,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../crypto.php';
 
-const GUA_AI_PROVIDERS = ['huggingface', 'gemini', 'openrouter'];
+const GUA_AI_PROVIDERS = ['huggingface', 'gemini', 'openrouter', 'anthropic', 'openai', 'grok'];
 
 function ai_keys_validate_provider(string $provider): void
 {

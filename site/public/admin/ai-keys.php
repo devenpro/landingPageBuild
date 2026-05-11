@@ -41,12 +41,13 @@ admin_head('AI keys', 'ai_keys');
         <span class="text-sm text-ink-500"><?= count($rows) ?> stored</span>
     </div>
     <p class="mt-2 text-ink-600">
-        Bring-your-own keys for HuggingFace, Gemini, and OpenRouter. Stored encrypted with libsodium.
-        The site decrypts in memory on each call and never echoes plaintext back to the browser.
+        Bring-your-own keys for HuggingFace, Gemini, OpenRouter, Anthropic, OpenAI, and Grok (xAI).
+        Stored encrypted with libsodium. The site decrypts in memory on each call and never echoes
+        plaintext back to the browser.
     </p>
     <p class="mt-2 text-sm text-ink-500">
         Default provider: <code class="rounded bg-ink-100 px-1.5 py-0.5 text-ink-800"><?= e($default_provider) ?></code>
-        <span class="text-ink-500">— change via <code>AI_DEFAULT_PROVIDER</code> in <code>.env</code>.</span>
+        <span class="text-ink-500">— change at <a class="underline hover:text-ink-700" href="/admin/settings.php?tab=ai">Settings → AI</a>.</span>
     </p>
 
     <?php if (!$master_key_ok): ?>
@@ -82,16 +83,33 @@ admin_head('AI keys', 'ai_keys');
                         </thead>
                         <tbody class="divide-y divide-ink-100">
                             <?php foreach ($rows as $r): ?>
-                                <tr class="ai-key-row align-middle hover:bg-ink-50/40" data-id="<?= (int)$r['id'] ?>">
+                                <tr class="ai-key-row align-middle hover:bg-ink-50/40" data-id="<?= (int)$r['id'] ?>" data-provider="<?= e((string)$r['provider']) ?>">
                                     <td class="px-4 py-3 font-medium text-ink-900"><?= e((string)$r['provider']) ?></td>
                                     <td class="px-4 py-3 text-ink-700"><?= e((string)($r['label'] ?? '—')) ?></td>
                                     <td class="px-4 py-3 text-ink-500 whitespace-nowrap"><?= e((string)$r['created_at']) ?></td>
                                     <td class="px-4 py-3 text-ink-500 whitespace-nowrap"><?= e((string)($r['last_used_at'] ?? '—')) ?></td>
-                                    <td class="px-4 py-3 text-right">
+                                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                                        <button type="button"
+                                                class="ai-key-models inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs text-ink-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700">
+                                            Models
+                                        </button>
                                         <button type="button"
                                                 class="ai-key-delete inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs text-ink-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700">
                                             Delete
                                         </button>
+                                    </td>
+                                </tr>
+                                <tr class="ai-key-models-row hidden border-t-0">
+                                    <td colspan="5" class="bg-ink-50/40 px-4 py-3">
+                                        <div class="ai-key-models-status text-xs text-ink-500">Loading models…</div>
+                                        <ul class="ai-key-models-list mt-2 grid gap-1 text-sm text-ink-800 sm:grid-cols-2 lg:grid-cols-3"></ul>
+                                        <div class="mt-2 flex items-center gap-3 text-xs text-ink-500">
+                                            <button type="button"
+                                                    class="ai-key-models-refresh inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-0.5 text-[11px] hover:border-brand-300 hover:text-brand-700">
+                                                Refresh
+                                            </button>
+                                            <span class="ai-key-models-meta"></span>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -197,6 +215,63 @@ admin_head('AI keys', 'ai_keys');
                 }
             });
         }
+
+        async function loadModels(row, panel, refresh) {
+            const provider = row.getAttribute('data-provider') || '';
+            const status   = panel.querySelector('.ai-key-models-status');
+            const list     = panel.querySelector('.ai-key-models-list');
+            const meta     = panel.querySelector('.ai-key-models-meta');
+            status.textContent = refresh ? 'Refreshing…' : 'Loading models…';
+            list.innerHTML = '';
+            meta.textContent = '';
+            try {
+                const url = '/api/ai/models.php?provider=' + encodeURIComponent(provider) + (refresh ? '&refresh=1' : '');
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const body = await res.json().catch(() => null);
+                if (!res.ok || !body || !body.ok) {
+                    status.textContent = (body && body.error) ? body.error : ('HTTP ' + res.status);
+                    return;
+                }
+                status.textContent = body.count + ' model' + (body.count === 1 ? '' : 's') + ' available';
+                meta.textContent = body.source === 'cache'
+                    ? ('cached ' + (body.fetched_at || '') + ' UTC')
+                    : ('fetched live ' + (body.fetched_at || '') + ' UTC');
+                body.models.forEach((m) => {
+                    const li = document.createElement('li');
+                    li.className = 'truncate rounded border border-ink-100 bg-white px-2 py-1 font-mono text-xs';
+                    li.textContent = m.id;
+                    if (m.label && m.label !== m.id) li.title = m.label;
+                    list.appendChild(li);
+                });
+            } catch (err) {
+                status.textContent = 'Network error';
+            }
+        }
+
+        document.querySelectorAll('.ai-key-models').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const row   = btn.closest('.ai-key-row');
+                const panel = row?.nextElementSibling;
+                if (!panel || !panel.classList.contains('ai-key-models-row')) return;
+                const wasOpen = !panel.classList.contains('hidden');
+                panel.classList.toggle('hidden');
+                if (!wasOpen && !panel.dataset.loaded) {
+                    panel.dataset.loaded = '1';
+                    loadModels(row, panel, false);
+                }
+            });
+        });
+        document.querySelectorAll('.ai-key-models-refresh').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const panel = btn.closest('.ai-key-models-row');
+                const row   = panel?.previousElementSibling;
+                if (row) loadModels(row, panel, true);
+            });
+        });
 
         document.querySelectorAll('.ai-key-delete').forEach((btn) => {
             btn.addEventListener('click', async () => {

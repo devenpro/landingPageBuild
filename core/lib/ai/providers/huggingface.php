@@ -25,6 +25,7 @@ require_once __DIR__ . '/../../config.php';
 
 const GUA_HF_DEFAULT_MODEL_FALLBACK = 'meta-llama/Llama-3.3-70B-Instruct';
 const GUA_HF_ENDPOINT               = 'https://router.huggingface.co/v1/chat/completions';
+const GUA_HF_MODELS_ENDPOINT        = 'https://router.huggingface.co/v1/models';
 const GUA_HF_TIMEOUT_SEC            = 60;
 
 function ai_provider_huggingface_chat(string $api_key, array $messages, array $opts = []): array
@@ -108,4 +109,52 @@ function ai_provider_huggingface_chat(string $api_key, array $messages, array $o
         'cost_usd'   => 0.0,
         'raw'        => $resp,
     ];
+}
+
+/**
+ * Fetch the models routable for the given HF key (v2 Stage 8).
+ * HF's router lists OpenAI-style { data: [...] }; each row's id is
+ * a model slug ("provider/model-repo" or "model-repo").
+ */
+function ai_provider_huggingface_list_models(string $api_key): array
+{
+    $headers = [
+        'Authorization: Bearer ' . $api_key,
+        'Accept: application/json',
+    ];
+
+    $ch = curl_init(GUA_HF_MODELS_ENDPOINT);
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER     => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => GUA_HF_TIMEOUT_SEC,
+    ]);
+    $raw   = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $err   = curl_error($ch);
+    $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($errno !== 0) {
+        throw new RuntimeException("HuggingFace transport error ($errno): $err");
+    }
+    if ($code < 200 || $code >= 300) {
+        throw new RuntimeException("HuggingFace models HTTP $code: " . substr((string)$raw, 0, 300));
+    }
+    $resp = json_decode((string)$raw, true);
+    if (!is_array($resp) || !isset($resp['data']) || !is_array($resp['data'])) {
+        throw new RuntimeException('HuggingFace models endpoint returned unexpected shape.');
+    }
+
+    $models = [];
+    foreach ($resp['data'] as $row) {
+        $id = (string)($row['id'] ?? '');
+        if ($id === '') continue;
+        $models[] = [
+            'id'    => $id,
+            'label' => $id,
+        ];
+    }
+    usort($models, fn($a, $b) => strcmp($a['id'], $b['id']));
+    return $models;
 }
