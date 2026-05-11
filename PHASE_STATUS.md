@@ -202,21 +202,21 @@ Phase 14 is otherwise complete: all four rounds (admin polish + SEO, form rate-l
 
 Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded · ⏳ pending · 🚧 in flight
 
-| # | Stage | Status | Branch | core/VERSION |
+| # | Stage | Status | Branch / PR | core/VERSION |
 |---|---|---|---|---|
-| 0 | Framing cleanup — remove stale "landing page builder" wording | 🚧 | `claude/enhance-core-features-Ylt9R` | 1.0.1 |
-| 1 | Settings foundation | ⏳ | — | 1.1.0 |
-| 2 | Brand Context Library | ⏳ | — | 1.2.0 |
-| 3 | Content blocks rework | ⏳ | — | 1.3.0 |
-| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Location Services, Ad Landing Pages) | ⏳ | — | 1.4.0 |
-| 5 | Taxonomy | ⏳ | — | 1.5.0 |
-| 6 | Forms builder | ⏳ | — | 1.6.0 |
+| 0 | Framing cleanup — remove stale "landing page builder" wording | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.0.1 |
+| 1 | Settings foundation | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.1.0 |
+| 2 | Brand Context Library | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.2.0 |
+| 3 | Content blocks rework | 🟡 | [#24](https://github.com/devenpro/landingPageBuild/pull/24) (stacked on #23) | 1.3.0 |
+| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🟡 | [#26](https://github.com/devenpro/landingPageBuild/pull/26) (rebase of #25; stacked on #23/#24) | 1.4.0 |
+| 5 | Taxonomy + Location Services | 🟡 | [#28](https://github.com/devenpro/landingPageBuild/pull/28) (rebase of #27, merged into integration) | 1.5.0 |
+| 6 | Forms builder | 🚧 | `v2/stage-6-forms` | 1.6.0 |
 | 7 | Media v2 (crop/resize/WebP) | ⏳ | — | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | ⏳ | — | 1.8.0 |
 | 9 | Front-end canvas polish | ⏳ | — | 1.9.0 |
 | 10 | Site Bootstrap | ⏳ | — | 2.0.0 |
 
-### v2 Stage 0 — Framing cleanup 🚧
+### v2 Stage 0 — Framing cleanup 🟡 ([#23](https://github.com/devenpro/landingPageBuild/pull/23))
 
 Scrubbed stale "landing page builder" wording from active code and docs so the system's identity as a multi-page website CMS is consistent everywhere. The repo started as a single-page tool (v1 Phase 2) and was expanded to a full website CMS at v1 Phase 3 — most active docs were updated then, but a few prompt strings and comments still narrowed the framing.
 
@@ -231,3 +231,233 @@ Historical references in `BUILD_BRIEF.md` (lines 3, 202, 292), `PHASE_STATUS.md`
 Verification: `grep -rin "landing page" core/ site/ README.md SETUP_GUIDE.md AGENTS.md AI_GUIDE.md MULTI_SITE.md PHASE_STATUS.md` returns only the 2 intentional hits in `generate_page.php` (the new hard rule listing "ad landing page" as one valid page type) plus the 3 historical Phase 2 tracker entries. No active code or non-historical doc describes the system as a "landing page builder".
 
 Rollback: revert the commit. Schema unchanged, no DB migration to undo.
+
+### v2 Stage 1 — Settings foundation 🟡 ([#23](https://github.com/devenpro/landingPageBuild/pull/23))
+
+DB-backed runtime settings replacing the v1 pattern of one `.env` knob per config value. Admin can edit values from `/admin/settings.php` and they take effect on the next request without a redeploy.
+
+**Schema** (`core/migrations/0006_settings.sql`)
+- `site_settings(id, key, value, value_type, group_name, label, description, is_secret, default_value, updated_at, updated_by)` with `idx_site_settings_group` for group lookups.
+- Seeded with 13 metadata rows for every existing user-facing `.env` knob (5 General, 4 AI, 2 Webhooks, 2 Media). `value` is NULL on seed so resolution falls through to `.env` until admin overrides via UI.
+
+**Library** (`core/lib/settings.php`)
+- `settings_get($key, $default)` — three-layer fallback: `site_settings.value` → `.env` (uppercased key) → `$default`. Per-request cache loads all rows in one query.
+- `settings_set($key, $value, $user_id)` — persists and clears the cache so same-request reads see the new value.
+- `settings_all_in_group($group)`, `settings_groups()`, `settings_source($key)` for the admin UI.
+- Type casting per `value_type`: string / number (int or float) / boolean (`FILTER_VALIDATE_BOOLEAN`) / json (decoded array) / secret.
+
+**Bootstrap chain rewire**
+- `core/lib/config.php` now exposes `env_get($key, $default)` and only defines paths + secrets at boot (`GUA_PROJECT_ROOT`, `GUA_CORE_PATH`, `GUA_SITE_PATH`, `GUA_DATA_PATH`, `GUA_DB_PATH`, `GUA_AI_KEYS_MASTER_KEY`, `GUA_CORE_VERSION`).
+- `core/lib/runtime_constants.php` (new) defines the 13 legacy `GUA_*` runtime constants via `settings_get()`. Loaded by `bootstrap.php` after `db.php` and `settings.php`. Existing v1 callers (auth, layout, sections, AI providers, form handler, chatbot endpoint, sitemap, admin pages) see DB values transparently — no other code changes required.
+
+**Admin UI** (`site/public/admin/settings.php`)
+- Tab-per-group nav (`?tab=general|ai|webhooks|media`) — only groups with rows render, so empty groups won't appear until later stages add settings.
+- Per-row source badge: green "DB override" / gray "from .env" / italic "default" + the effective value displayed underneath.
+- Inputs adapt to `value_type`: text input, number input, boolean tri-state select (empty / On / Off), JSON textarea, password input for `is_secret=1`.
+- Empty input on save = clear DB value (NULL), restoring `.env` / default fallback.
+
+**Save endpoint** (`site/public/api/settings.php`)
+- POST-only, CSRF-checked, admin-only. Form-urlencoded body (no JSON path in Stage 1 — the page is server-rendered, the form is plain HTML).
+- Per-key validation matching `value_type` (number must be numeric, boolean must be `'0'`/`'1'`, JSON must parse).
+- Redirects back to `/admin/settings.php?tab=<x>&saved=1` on success or `&error=…` on validation failure.
+
+**Nav** — `site/public/admin/_layout.php` flips the `settings` entry from `live:false` to `live:true` and sets `href` to `/admin/settings.php`.
+
+**Smoke test** — `core/scripts/test_stage_1.php` (14 assertions): seed count, three-layer resolution, save+read cycle, type casting (number/boolean), clearing restores fallback, group queries. End-to-end manual verification: dev server boots, login flow works, page renders all 4 tabs and 13 settings, save persists to DB, source badge updates correctly.
+
+**Rollback**: revert the commit and `DROP TABLE site_settings`. Existing constants resolved via `settings_get()` would fall back to `.env` for the runtime knobs, so no behavior change for sites that haven't customized any setting via UI.
+
+### v2 Stage 2 — Brand Context Library 🟡 ([#23](https://github.com/devenpro/landingPageBuild/pull/23))
+
+Categorised brand knowledge curated by the admin and injected into every AI prompt as ground truth. Replaces the v1 pattern where each AI call started from scratch with no source-of-truth for brand voice, audience, services, design guide, or page-build conventions. Editable from both the admin panel AND Claude Code (disk mirror at `.brand/`); the DB is canonical and the admin reconciles drift manually.
+
+**Schema** (`core/migrations/0007_brand_context.sql`)
+- `brand_categories` — 8 built-in: brand_voice, brand_facts, audience, services, design_guide, page_guide, seo, social. Five flagged `required` for the audit.
+- `brand_items` — body + body_hash + disk_hash + status + source + ai_reviewed + always_on + version. UNIQUE(category_id, slug).
+- `brand_item_history` — per-save snapshot for future restore UI.
+- Seeded with one empty placeholder item per category (8 rows). `source='bootstrap'`, `ai_reviewed=1`, body=''.
+
+**Library** (`core/lib/brand/`)
+- `categories.php` — `brand_categories_all()`, `brand_category_by_slug()`, `brand_category_item_counts()`.
+- `items.php` — CRUD with versioning, history snapshots, slug regex validation (`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`). Update auto-marks `ai_reviewed=1` when an admin saves.
+- `sync.php` — disk write/delete, YAML frontmatter renderer + permissive parser, drift detection (states: `disk_changed`, `disk_missing`, `disk_only`), `brand_sync_pull($id, $strategy, $manual_body)` for accept_disk / keep_db / manual reconciliation. `brand_hash()` normalises trailing CR/LF so editor-added newlines don't register as drift. `brand_assert_under_root()` resolves paths and refuses anything outside `.brand/`.
+- `audit.php` — `brand_audit()` returns `{score, missing, stale, ok, totals}`. Score = % of required categories with at least one filled-and-reviewed item. AI-generated unreviewed items count as `stale` (not blocking, but flagged).
+
+**AI prompt integration** (`core/lib/ai/`)
+- `brand_context.php` — three assemblers: `brand_context_summary()` (200-word digest of voice/facts/audience/services for chat), `brand_context_for_categories(slugs)` (full bodies, 4K per category / 8K global cap, used by page generation and suggest-pages), `brand_context_always()` (always_on items only, persistent chatbot anchor). All assemblers exclude `source='ai' AND ai_reviewed=0` items via `brand_items_for_prompt_context()`.
+- `prompts/brand_item_generate.php` — new prompt for the admin "AI fill" button and Stage 10 bootstrap gap-fill. Returns JSON `{title, body}`. Items it generates are saved with `source='ai', ai_reviewed=0` so they don't influence other prompts until admin opens and saves them.
+- `prompts/chat.php` — prepends `brand_context_summary()` + `brand_context_always()` to the public chatbot system prompt above the "Site context" block.
+- `prompts/suggest_pages.php` — prepends `brand_context_for_categories(['brand_voice','audience','services'])` to the user message before the brief.
+- `prompts/generate_page.php` — prepends `brand_context_for_categories(['brand_voice','audience','services','design_guide','page_guide'])` to the user message.
+
+**Claude Code workflow**
+- `.claude/scripts/check-mode.php` now allows `.brand/**` writes in both core and site mode (no need to switch modes when iterating brand content alongside code).
+- New repo-root `CLAUDE.md` — ~30 lines pointing to `.brand/INDEX.md`, explaining the manual-sync model and the slug rule.
+- `.brand/` is git-tracked by default so a desktop session and a mobile session see the same content. Disk file format: YAML frontmatter (id, category, slug, kind, title, version, body_hash, updated_at, source) + body. `INDEX.md` auto-regenerated after every save and delete.
+
+**Admin UI**
+- `/admin/brand.php` (`site/public/admin/brand.php`) — three-pane layout: categories rail with required/missing badges + item counts → items list with empty/always-on/AI-review state pills → editor (title, slug, kind, body textarea, always_on toggle, status). Save flows through `/api/brand/items.php`. Drift banner appears at top when `brand_sync_dirty()` returns rows, deep-linking to `/admin/brand-sync.php`. Audit score badge at top right.
+- `/admin/brand-sync.php` (`site/public/admin/brand-sync.php`) — drift resolution UI. Per item: side-by-side DB vs disk body, three actions (Accept disk / Keep DB / Manual merge with textarea pre-filled from disk body).
+
+**API**
+- `POST /api/brand/items.php` — form-driven create / update / delete. CSRF, auth, redirect-back with `?saved=1` / `?created=1` / `?error=...`.
+- `POST /api/brand/sync.php` — apply a drift resolution strategy. CSRF, auth.
+- `GET /api/brand/audit.php` — JSON audit result for the Stage 10 bootstrap wizard and the dashboard banner.
+
+**Nav** — `_layout.php` adds 'Brand' between 'Pages' and 'Forms'.
+
+**Smoke test** — `core/scripts/test_stage_2.php` (20 assertions): seed shape, CRUD with disk mirroring, slug validator, drift detection (file edited externally), sync strategies (accept_disk overwrites DB body + bumps version, source→'disk'), AI-prompt context assembly filtering `ai_reviewed=0` items, audit score sanity, disk cleanup on delete. End-to-end manual verification: admin renders three-pane layout with all 8 categories, audit JSON endpoint returns expected shape, item creation via HTTP form POST persists to DB and writes disk file with frontmatter.
+
+**Rollback**: revert the commit, `DROP TABLE brand_item_history; DROP TABLE brand_items; DROP TABLE brand_categories`, and delete `.brand/`. Existing AI prompts revert to v1 behavior with no brand-context injection.
+
+### v2 Stage 3 — Content blocks rework 🚧 (`v2/stage-3-blocks`, stacked on #23)
+
+Splits the v1 flat `content_blocks(key, value, type)` table into three tables: reusable block definitions, per-field values, and per-page overrides. Replaces the single keyed namespace where reusable content and page-scoped overrides shared rows with no enforced structure.
+
+**Schema** (`core/migrations/0008_blocks_split.sql`)
+- The v1 `content_blocks` table is renamed to `legacy_content` and kept as a read-fallback for one release.
+- New `content_blocks(id, slug UNIQUE, name, description, category, status, schema_json, preview_partial, ...)` — block DEFINITIONS.
+- New `content_block_fields(id, block_id, field_key, value, type, position, ...)` UNIQUE(block_id, field_key) — VALUES for each block's fields.
+- New `page_fields(id, page_id, field_key, value, type, ...)` UNIQUE(page_id, field_key) — per-page overrides.
+- Data migration runs inline in pure SQL (no separate PHP script): parses each legacy key on the first dot to derive a block slug + field_key, then inserts into the new tables. Page-scoped `page.<slug>.<field>` rows go to `page_fields` via a join against `pages.slug`. On a fresh dataset all 104 v1 rows migrate to 15 blocks with their fields; zero `page_fields` rows since no page-scoped overrides existed in v1.
+
+**Resolution chain** (`core/lib/content.php`)
+- `c('hero.headline')` with `content_set_prefix('page.about')` now resolves: `page_fields(page.slug='about', field_key='hero.headline')` → `content_block_fields(block.slug='hero', field_key='headline')` → `legacy_content(key='hero.headline')`. The legacy fallback covers any row not yet migrated and is the safety net during the deprecation window.
+- `block_get($slug)` returns the block row; `block($slug)` includes `site/sections/<slug>.php` (or `preview_partial` if set) and returns the rendered HTML.
+- All v1 callers (section partials, layout, sitemap, JSON-LD) continue to use `c('section.field')` unchanged.
+
+**Writes** (`site/public/api/content.php`)
+- Parses incoming keys via regex: `page.<slug>.<field>` → `page_fields` upsert; `<block_slug>.<field>` → `content_block_fields` upsert. Auto-creates the block definition if the slug doesn't exist yet (covers the inline editor adding new sections).
+- Existing inline editor (`editor.js`) needs no changes — it still sends concatenated `<prefix>.<key>` strings.
+- `site/public/api/ai/generate.php` updated to write directly to `page_fields` instead of the renamed table.
+- `site/public/admin/content.php` rewritten to read the flat (key, value, type) view by joining `content_block_fields` with `content_blocks` so the v1 admin content editor continues to work.
+- `site/public/admin/dashboard.php` content-count badge now counts `content_block_fields` rows.
+
+**Admin UI**
+- New `/admin/blocks.php` (`site/public/admin/blocks.php`) — left pane lists blocks (with field counts), right pane has block-meta form + per-field editor + "add field" form. Saves go through `/api/blocks.php` with action verbs (`create`, `save_meta`, `delete`, `add_field`, `save_fields`). Slug regex matches the v2 convention.
+- Nav: `Blocks` slotted between `Content` and `Pages` in `_layout.php`.
+
+**Smoke test** — `core/scripts/test_stage_3.php` (14 assertions): all four tables exist, non-page legacy row count == new field row count, `c()` resolves migrated keys for hero / faq / feature partials, `block_get()` works, page_fields override beats block field when `content_set_prefix('page.home')` is set, legacy_content read-fallback covers rows not in the new tables. End-to-end manual verification: dev server boot → homepage 200 with all hero / features / faq content present → admin login 302 → admin/blocks.php renders all 15 blocks → faq block detail shows correct fields → API block-create round-trip works.
+
+**Rollback**: tricky because the rename is destructive on the v1 schema. Path: copy `legacy_content` rows back into a freshly-created v1-shaped `content_blocks` table, drop the v2 tables. `rollback_blocks.php` is a one-liner script left for a future stage; for now treat the rename as one-way.
+
+### v2 Stage 4 — Content types + Content Manage hub 🚧 (`v2/stage-4-content-types`, stacked on #24)
+
+First-class content types replace v1's "everything is a page" model. v1 stored testimonials as ad-hoc `content_blocks` rows and had no first-class home for ad landing pages. Stage 4 ships three built-in types: Testimonials (non-routable), Services (routable `/services/{slug}`), and Ad Landing Pages (routable `/lp/{slug}`). Location Services is deferred to Stage 5 since it depends on taxonomy.
+
+**Schema** (`core/migrations/0009_content_types.sql`)
+- `content_types(id, slug UNIQUE, name, description, is_routable, route_pattern, detail_partial, list_partial, schema_json, is_builtin, status, sort_order, ...)` — type registry.
+- `content_entries(id, type_id, slug, title, data_json, seo_title, seo_description, seo_og_image, robots, status, position, ...)` UNIQUE(type_id, slug). `slug` nullable for non-routable types. `data_json` holds type-specific fields whose shape is documented in the type's `schema_json` (used by the admin form renderer).
+- Trigger `trg_ad_lp_default_robots` sets `robots='noindex,nofollow'` on every new ad-landing-pages entry where the field wasn't explicitly provided, so paid-traffic pages don't compete with organic SEO out of the box.
+
+**Library** (`core/lib/content/`)
+- `types.php` — read-only registry (`content_types_all`, `content_type_by_slug`, `content_types_routable`, `content_type_fields` decoding `schema_json`).
+- `entries.php` — CRUD with slug validation (same regex as Stage 2), status enum, JSON round-trip for `data_json`. `content_entry_update()` merges with the existing row so the API can pass only the fields it owns.
+
+**Routing** (`core/lib/pages.php`)
+- `route_request()` now: 1) match `pages.slug`, 2) match each routable content type's `route_pattern`, 3) 404. Pages still win on slug collision.
+- `content_resolve_route($uri)` quotes the pattern, swaps `{placeholder}` for a named-capture slug regex, and looks up the published entry. Returns `['type' => …, 'entry' => …, 'params' => […]]`.
+- `render_content_entry($type, $entry)` synthesises a `$page`-shaped array for the layout, exposes `$gua_content_entry / $gua_content_type / $gua_content_data` to the partial, then includes `site/sections/<detail_partial>.php` between `layout_head` and `layout_foot`.
+
+**Frontend**
+- `site/layout.php` — emits `<meta name="robots" content="…">` when `$page['robots']` is set (used by Ad LPs).
+- `site/sections/service_detail.php` — hero / long description / features / FAQs. Pulls from `$gua_content_data`.
+- `site/sections/ad_lp_detail.php` — hero / benefits / CTAs. Injects Meta Pixel + Google Tag `<script>` tags only when the corresponding fields are set. Wires `fbq('track', conversion_event)` into the primary CTA's onclick.
+
+**Admin**
+- `/admin/content-types.php` — three-pane hub (types rail / entries list / entry editor). Form fields rendered from the type's `schema_json` so per-type fields appear automatically. Optional SEO + robots collapsible. New-entry mini-form below the editor.
+- `/api/content/entries.php` — form-driven CRUD (create / update / delete). The update handler only writes the optional `seo_*` and `robots` fields when the form actually submits them, so the create trigger's default doesn't get clobbered on subsequent saves.
+- `_layout.php` nav: 'Types' between 'Blocks' and 'Pages'.
+
+**Verification**
+- `core/scripts/test_stage_4.php` — 24 assertions covering schema, seed, CRUD, slug validation, data_json round-trip, routing (positive + negative), Ad LP default robots trigger. All pass.
+- End-to-end: created a Service entry via the admin API; GET `/services/local-seo-audit` → 200 with title in `<title>`, meta description, hero + CTA + features. Created an Ad LP; GET `/lp/bf-2025-test` → 200 with `<meta name="robots" content="noindex,nofollow">`, Meta Pixel + Google Tag scripts, primary CTA wired to `fbq('track', conversion_event)`.
+
+**Rollback**: revert the commit and `DROP TABLE content_entries; DROP TABLE content_types; DROP TRIGGER IF EXISTS trg_ad_lp_default_robots;`. Routing falls back to pages-only; the 3 detail partials remain in `site/sections/` but become unreachable. No data migration to undo since v1 had no content_types data.
+
+### v2 Stage 5 — Taxonomy + Location Services 🚧 (`v2/stage-5-taxonomy`, stacked on #26)
+
+Adds hierarchical taxonomies for internal classification (SEO topical authority + local relevance) and ships the **Location Services** content type that Stage 4 deferred. Taxonomies aren't auto-rendered as public archives — they're a data layer that drives multi-segment URLs, breadcrumbs, and per-location content lookups.
+
+**Schema** (`core/migrations/0010_taxonomy.sql`)
+- `taxonomies(id, slug UNIQUE, name, is_hierarchical, applies_to_type_ids_json, is_builtin, sort_order, ...)` — taxonomy registry.
+- `taxonomy_terms(id, taxonomy_id, parent_id, slug, name, description, position, ...)` UNIQUE(taxonomy_id, slug) — terms with self-referencing parent for hierarchy.
+- `entry_taxonomy_terms(entry_id, term_id, type_id)` PRIMARY KEY(entry_id, term_id) — many-to-many with denormalised `type_id` for fast filtering by type+term.
+- Seeds: `locations` (hierarchical: country → state → city → area) and `service_categories` (hierarchical) — both empty trees populated via admin.
+- Seeds the `location_services` content type with route_pattern `/services/{service_slug}/{location_slug}` (multi-placeholder).
+
+**Library** (`core/lib/taxonomy.php`)
+- `taxonomies_all` / `taxonomy_by_slug` / `taxonomy_by_id` — registry helpers.
+- `taxonomy_terms($slug, $parent_id = null)` — direct children of a parent (null = root).
+- `taxonomy_terms_all` (flat) / `taxonomy_tree` (nested with `children[]`).
+- `term_path($term_id)` — ordered root-to-leaf ancestor chain for breadcrumb rendering.
+- `term_create` / `term_update` / `term_delete` with slug regex validation (`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`) and cycle prevention (rejects descendant-as-parent, self-parent).
+- `entry_terms($entry_id, $taxonomy_slug?)` — read assignments.
+- `entry_terms_set($entry_id, $type_id, $term_ids[])` — replace assignments transactionally.
+- `entries_for_term($term_id, $type_id?)` — fast lookup via the denormalised type_id index.
+- `taxonomies_for_type($type_id)` — which taxonomies the admin form should expose for an entry of this type (NULL `applies_to_type_ids_json` = all routable; else JSON array of type ids).
+
+**Routing extension** (`core/lib/pages.php`)
+- `content_resolve_route` now supports patterns with multiple placeholders. Collects placeholder names in pattern order, builds a composite slug from the captured groups (e.g. `seo-audit/mumbai`), and looks up `content_entries` by that composite slug. Single-placeholder patterns still work unchanged.
+- `content_entries.slug` validator extended to accept multi-segment slugs (each segment matches the original single-slug rule, segments separated by `/`).
+
+**Frontend**
+- `site/sections/location_service_detail.php` — pulls parent Service entry (by `service_entry_id` in `data_json`) and location term (by `location_term_id`), renders breadcrumb (Home → Service → location ancestors → current), inherits the Service's features list, exposes per-location address/phone/map embed.
+
+**Admin UI**
+- `/admin/taxonomies.php` — two-pane: taxonomies list / indented tree of the active taxonomy with inline add-child / edit (rename, change parent) / delete forms. Add-root-term form at the bottom. Drag-and-drop reorder deferred to Stage 9 (canvas).
+- `/api/taxonomies.php` — POST CRUD on terms (add, update, delete) with CSRF + auth + slug validation; per-operation error redirect.
+- `/admin/content-types.php` extended: shows a multi-select term picker per applicable taxonomy in the entry editor (parent prefix shown with `— ` indentation so hierarchy is readable in the flat select).
+- `/api/content/entries.php` extended: when the form includes `term_ids[]`, `entry_terms_set()` replaces the entry's assignments. Omitting the field leaves existing assignments alone (so non-term forms don't accidentally clear).
+- `_layout.php` nav: 'Taxonomies' slotted between 'Types' and 'Pages'.
+
+**Verification**
+- `core/scripts/test_stage_5.php` — 27 assertions: schema, seed, hierarchical CRUD (3-level India→Maharashtra→Mumbai tree), nested tree shape, `term_path` order, cycle prevention (self-parent + descendant-as-parent), entry term set/read/clear, multi-placeholder route resolution (composite slug lookup), single-segment fallback still works, taxonomies_for_type filter. All pass.
+- End-to-end: admin builds the 3-level locations tree via the UI; creates a Service entry; creates a Location Services entry with composite slug `seo-audit/mumbai`, service/location refs, address + phone; GET `/services/seo-audit/mumbai` returns 200 with full breadcrumb chain, inherited service link, per-location address + phone link; entry's term assignment persisted in `entry_taxonomy_terms`.
+
+**Rollback**: revert the commit and `DROP TABLE entry_taxonomy_terms; DROP TABLE taxonomy_terms; DROP TABLE taxonomies; DELETE FROM content_types WHERE slug='location_services';`. Multi-placeholder routes 404 (only single-slug patterns resolve); `location_service_detail.php` becomes unreachable but harmless.
+
+### v2 Stage 6 — Forms builder 🚧 (`v2/stage-6-forms`)
+
+Multi-form CRUD with per-form fields and per-form webhooks. v1 had the waitlist form hard-coded in `final_cta.php` with fixed columns in `form_submissions` and a single `GUA_WEBHOOK_URL` from `.env`. Stage 6 introduces three new tables and a slug-driven submit endpoint while preserving the v1 waitlist round-trip.
+
+**Schema** (`core/migrations/0011_forms.sql`)
+- `forms(id, slug UNIQUE, name, status, settings_json, is_builtin, …)` — multi-form registry.
+- `form_fields(id, form_id, position, type, name, label, placeholder, default_value, required, options_json, validation_json, help_text)` UNIQUE(form_id, name) — per-form input definitions (12 supported types).
+- `form_webhooks(id, form_id, name, url, method, headers_json, payload_template_json, fire_on_json, signing_secret, max_retries, enabled)` — per-form outbound POST/PUT/PATCH.
+- `form_submissions` gets `form_id` + `data_json` columns. Legacy fixed columns (full_name/email/phone/role/clients_managed/bottleneck) stay readable; new submissions populate both legacy columns AND data_json for the waitlist form (so v1 CSV export keeps working) and only data_json for new forms.
+- `webhook_deliveries` gets `form_id` + `webhook_id` columns so the inbox can show which webhook produced each delivery.
+- Seeds the waitlist as form #1 with the 6 v1 fields. Existing v1 submission rows backfilled to `form_id=1` with `data_json` reconstructed from the legacy columns via `json_object(...)`.
+
+**Library** (`core/lib/forms.php`)
+- Read helpers: `forms_all`, `form_by_slug`, `form_by_id`, `form_settings`, `form_fields`, `form_webhooks`, `form_submission_count`.
+- CRUD: `form_create / form_update / form_delete` (refuses to delete builtin forms), `form_field_create / form_field_update / form_field_delete`, `form_webhook_create / form_webhook_update / form_webhook_delete` (HTTP method clamped to POST/PUT/PATCH).
+- `form_validate($form, $input)` — returns `{ok: true, data: ...}` or `{ok: false, errors: {field => message}}`. Honors per-field `validation_json` (max_length, min_length, regex pattern with custom error message) and per-type rules (email, phone digit count, url, number).
+- `form_render($slug, $opts)` — emits the HTML form from `form_fields`, including CSRF token, hidden `form` slug, honeypot (configurable via settings_json), and one input per field. Supports text / email / phone / url / number / date / textarea / select / radio / checkbox / file / hidden.
+- `form_resolve_payload($template, $data, $meta)` — substitutes `{{field_name}}` and `{{meta.<key>}}` placeholders so webhook templates can map submission data to any third-party API's shape (Slack `text`, Zapier-flat, custom).
+
+**Public endpoint** (`site/public/api/form.php`)
+- Slug-driven via `?form=<slug>` or `form` POST field. Defaults to `waitlist` so v1 markup keeps working.
+- Pipeline: CSRF → rate limit → resolve form (404 if missing/draft) → honeypot → validate → INSERT (form_id + data_json + legacy columns when names match) → fire every enabled webhook with resolved payload + HMAC signature if `signing_secret` set → roll up status (sent / queued / failed / skipped) → respond JSON or HTML.
+- Legacy fallback: if form=waitlist AND no `form_webhooks` rows AND `GUA_WEBHOOK_URL` is set, fire that URL. Lets existing deployments keep delivering during the migration window.
+
+**Webhook lib extension** (`core/lib/webhook.php`)
+- `webhook_post` gains optional `$extra_headers` and `$method` parameters so per-form webhooks can send custom auth headers (Bearer tokens, Slack signing) and use non-POST verbs. Legacy 3-arg callers unchanged.
+
+**Frontend** (`site/sections/final_cta.php`)
+- Replaced the inlined 50-line waitlist form with `<?= form_render('waitlist', ['submit_label' => …, 'html_id' => 'waitlist-form']) ?>`. The hidden form slug, honeypot, CSRF, and field set all come from the DB now. Editing fields in `/admin/forms.php` reflects on the public site on the next request.
+
+**Admin**
+- `/admin/forms.php` — replaces the v1 single-form waitlist inbox. Without `?form` it lists every form with submission/webhook counts and a new-form form. With `?form=<id>` it shows a tabbed editor:
+  - **Fields**: per-field edit row (label, type, placeholder, position, default, help_text, required, options_json, validation_json) with save / delete actions, plus an "add field" form.
+  - **Settings**: name, description, status, honeypot field name, success_heading, success_body, success_redirect URL, notification_email.
+  - **Webhooks**: per-webhook edit (name, url, method, signing_secret, headers_json, payload_template_json, enabled), plus add-webhook form.
+  - **Submissions**: 100 most recent rows with full data_json viewable in a `<details>` block.
+  - **Embed**: snippet showing `<?= form_render('<slug>') ?>` plus the direct POST URL.
+- `/api/forms.php` — POST CRUD with `action` verb (create_form, save_settings, delete_form, add_field, save_field, delete_field, add_webhook, save_webhook, delete_webhook). CSRF + auth on every call.
+
+**Verification**
+- `core/scripts/test_stage_6.php` — 30 assertions: schema (all 3 new tables + 2 added columns), seed (waitlist + 6 fields), form/field/webhook CRUD with validation, slug regex, type whitelist, HTTP method clamping, form_validate (good input, missing required, bad email type), payload template `{{field}}` and `{{meta.key}}` substitution, refuses to delete builtin form, submission count. All pass.
+- End-to-end via dev server: waitlist POSTs continue to work (returns 200, data_json captured, legacy columns populated). Admin creates a 2nd "contact" form, adds 3 fields, marks all required. Public POST to `/api/form.php?form=contact` validates, persists with `form_id=2`, data_json contains name/email/message. Admin index view lists both forms with submission counts.
+
+**Rollback**: revert the commit + `ALTER TABLE form_submissions DROP COLUMN form_id; ALTER TABLE form_submissions DROP COLUMN data_json;` (SQLite 3.35+) and `DROP TABLE forms; DROP TABLE form_fields; DROP TABLE form_webhooks;`. v1 hard-coded waitlist form needs to be restored from git. `webhook_post`'s extra args are backward-compatible (optional with defaults).

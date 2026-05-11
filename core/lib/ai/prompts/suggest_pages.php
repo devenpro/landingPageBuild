@@ -13,6 +13,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../brand_context.php';
+
 const GUA_SUGGEST_PAGES_SYSTEM = <<<'SYS'
 You are a website strategist helping a small business plan its site.
 
@@ -55,8 +57,19 @@ SYS;
 function suggest_pages_messages(string $brief): array
 {
     $brief = trim($brief);
+
+    // v2 Stage 2: prepend Brand Context Library content (brand_voice,
+    // audience, services) so suggestions reflect this business's actual
+    // positioning, not a generic plan. Empty when BCL has no reviewed
+    // content yet, so this is safe on fresh sites.
+    $brand = brand_context_for_categories(['brand_voice', 'audience', 'services']);
+    $user_content = "Brief:\n\n{$brief}";
+    if ($brand !== '') {
+        $user_content = "Brand context:\n\n{$brand}\n\n---\n\nBrief:\n\n{$brief}";
+    }
+
     return [
         ['role' => 'system', 'content' => GUA_SUGGEST_PAGES_SYSTEM],
-        ['role' => 'user',   'content' => "Brief:\n\n{$brief}"],
+        ['role' => 'user',   'content' => $user_content],
     ];
 }
