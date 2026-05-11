@@ -15,12 +15,21 @@
 declare(strict_types=1);
 
 /** One-shot HTTP POST. Returns a normalized result. No DB writes here. */
-function webhook_post(string $url, array $payload, int $timeout_seconds): array
+/**
+ * v2 Stage 6 added optional $extra_headers and $method so per-form webhooks
+ * can send custom auth headers (Slack signing, Bearer tokens) and use
+ * non-POST verbs. Legacy callers pass three args and get POST + JSON as before.
+ */
+function webhook_post(string $url, array $payload, int $timeout_seconds, array $extra_headers = [], string $method = 'POST'): array
 {
+    $headers = ['Content-Type: application/json'];
+    foreach ($extra_headers as $h) {
+        if (is_string($h) && $h !== '') $headers[] = $h;
+    }
     $ch = curl_init($url);
     curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_CUSTOMREQUEST  => strtoupper($method),
+        CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_POSTFIELDS     => json_safe($payload),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => $timeout_seconds,

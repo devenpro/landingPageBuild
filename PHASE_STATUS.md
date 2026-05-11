@@ -209,8 +209,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 2 | Brand Context Library | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.2.0 |
 | 3 | Content blocks rework | 🟡 | [#24](https://github.com/devenpro/landingPageBuild/pull/24) (stacked on #23) | 1.3.0 |
 | 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🟡 | [#26](https://github.com/devenpro/landingPageBuild/pull/26) (rebase of #25; stacked on #23/#24) | 1.4.0 |
-| 5 | Taxonomy + Location Services | 🚧 | `v2/stage-5-taxonomy` (stacked on #26) | 1.5.0 |
-| 6 | Forms builder | ⏳ | — | 1.6.0 |
+| 5 | Taxonomy + Location Services | 🟡 | [#28](https://github.com/devenpro/landingPageBuild/pull/28) (rebase of #27, merged into integration) | 1.5.0 |
+| 6 | Forms builder | 🚧 | `v2/stage-6-forms` | 1.6.0 |
 | 7 | Media v2 (crop/resize/WebP) | ⏳ | — | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | ⏳ | — | 1.8.0 |
 | 9 | Front-end canvas polish | ⏳ | — | 1.9.0 |
@@ -416,3 +416,48 @@ Adds hierarchical taxonomies for internal classification (SEO topical authority 
 - End-to-end: admin builds the 3-level locations tree via the UI; creates a Service entry; creates a Location Services entry with composite slug `seo-audit/mumbai`, service/location refs, address + phone; GET `/services/seo-audit/mumbai` returns 200 with full breadcrumb chain, inherited service link, per-location address + phone link; entry's term assignment persisted in `entry_taxonomy_terms`.
 
 **Rollback**: revert the commit and `DROP TABLE entry_taxonomy_terms; DROP TABLE taxonomy_terms; DROP TABLE taxonomies; DELETE FROM content_types WHERE slug='location_services';`. Multi-placeholder routes 404 (only single-slug patterns resolve); `location_service_detail.php` becomes unreachable but harmless.
+
+### v2 Stage 6 — Forms builder 🚧 (`v2/stage-6-forms`)
+
+Multi-form CRUD with per-form fields and per-form webhooks. v1 had the waitlist form hard-coded in `final_cta.php` with fixed columns in `form_submissions` and a single `GUA_WEBHOOK_URL` from `.env`. Stage 6 introduces three new tables and a slug-driven submit endpoint while preserving the v1 waitlist round-trip.
+
+**Schema** (`core/migrations/0011_forms.sql`)
+- `forms(id, slug UNIQUE, name, status, settings_json, is_builtin, …)` — multi-form registry.
+- `form_fields(id, form_id, position, type, name, label, placeholder, default_value, required, options_json, validation_json, help_text)` UNIQUE(form_id, name) — per-form input definitions (12 supported types).
+- `form_webhooks(id, form_id, name, url, method, headers_json, payload_template_json, fire_on_json, signing_secret, max_retries, enabled)` — per-form outbound POST/PUT/PATCH.
+- `form_submissions` gets `form_id` + `data_json` columns. Legacy fixed columns (full_name/email/phone/role/clients_managed/bottleneck) stay readable; new submissions populate both legacy columns AND data_json for the waitlist form (so v1 CSV export keeps working) and only data_json for new forms.
+- `webhook_deliveries` gets `form_id` + `webhook_id` columns so the inbox can show which webhook produced each delivery.
+- Seeds the waitlist as form #1 with the 6 v1 fields. Existing v1 submission rows backfilled to `form_id=1` with `data_json` reconstructed from the legacy columns via `json_object(...)`.
+
+**Library** (`core/lib/forms.php`)
+- Read helpers: `forms_all`, `form_by_slug`, `form_by_id`, `form_settings`, `form_fields`, `form_webhooks`, `form_submission_count`.
+- CRUD: `form_create / form_update / form_delete` (refuses to delete builtin forms), `form_field_create / form_field_update / form_field_delete`, `form_webhook_create / form_webhook_update / form_webhook_delete` (HTTP method clamped to POST/PUT/PATCH).
+- `form_validate($form, $input)` — returns `{ok: true, data: ...}` or `{ok: false, errors: {field => message}}`. Honors per-field `validation_json` (max_length, min_length, regex pattern with custom error message) and per-type rules (email, phone digit count, url, number).
+- `form_render($slug, $opts)` — emits the HTML form from `form_fields`, including CSRF token, hidden `form` slug, honeypot (configurable via settings_json), and one input per field. Supports text / email / phone / url / number / date / textarea / select / radio / checkbox / file / hidden.
+- `form_resolve_payload($template, $data, $meta)` — substitutes `{{field_name}}` and `{{meta.<key>}}` placeholders so webhook templates can map submission data to any third-party API's shape (Slack `text`, Zapier-flat, custom).
+
+**Public endpoint** (`site/public/api/form.php`)
+- Slug-driven via `?form=<slug>` or `form` POST field. Defaults to `waitlist` so v1 markup keeps working.
+- Pipeline: CSRF → rate limit → resolve form (404 if missing/draft) → honeypot → validate → INSERT (form_id + data_json + legacy columns when names match) → fire every enabled webhook with resolved payload + HMAC signature if `signing_secret` set → roll up status (sent / queued / failed / skipped) → respond JSON or HTML.
+- Legacy fallback: if form=waitlist AND no `form_webhooks` rows AND `GUA_WEBHOOK_URL` is set, fire that URL. Lets existing deployments keep delivering during the migration window.
+
+**Webhook lib extension** (`core/lib/webhook.php`)
+- `webhook_post` gains optional `$extra_headers` and `$method` parameters so per-form webhooks can send custom auth headers (Bearer tokens, Slack signing) and use non-POST verbs. Legacy 3-arg callers unchanged.
+
+**Frontend** (`site/sections/final_cta.php`)
+- Replaced the inlined 50-line waitlist form with `<?= form_render('waitlist', ['submit_label' => …, 'html_id' => 'waitlist-form']) ?>`. The hidden form slug, honeypot, CSRF, and field set all come from the DB now. Editing fields in `/admin/forms.php` reflects on the public site on the next request.
+
+**Admin**
+- `/admin/forms.php` — replaces the v1 single-form waitlist inbox. Without `?form` it lists every form with submission/webhook counts and a new-form form. With `?form=<id>` it shows a tabbed editor:
+  - **Fields**: per-field edit row (label, type, placeholder, position, default, help_text, required, options_json, validation_json) with save / delete actions, plus an "add field" form.
+  - **Settings**: name, description, status, honeypot field name, success_heading, success_body, success_redirect URL, notification_email.
+  - **Webhooks**: per-webhook edit (name, url, method, signing_secret, headers_json, payload_template_json, enabled), plus add-webhook form.
+  - **Submissions**: 100 most recent rows with full data_json viewable in a `<details>` block.
+  - **Embed**: snippet showing `<?= form_render('<slug>') ?>` plus the direct POST URL.
+- `/api/forms.php` — POST CRUD with `action` verb (create_form, save_settings, delete_form, add_field, save_field, delete_field, add_webhook, save_webhook, delete_webhook). CSRF + auth on every call.
+
+**Verification**
+- `core/scripts/test_stage_6.php` — 30 assertions: schema (all 3 new tables + 2 added columns), seed (waitlist + 6 fields), form/field/webhook CRUD with validation, slug regex, type whitelist, HTTP method clamping, form_validate (good input, missing required, bad email type), payload template `{{field}}` and `{{meta.key}}` substitution, refuses to delete builtin form, submission count. All pass.
+- End-to-end via dev server: waitlist POSTs continue to work (returns 200, data_json captured, legacy columns populated). Admin creates a 2nd "contact" form, adds 3 fields, marks all required. Public POST to `/api/form.php?form=contact` validates, persists with `form_id=2`, data_json contains name/email/message. Admin index view lists both forms with submission counts.
+
+**Rollback**: revert the commit + `ALTER TABLE form_submissions DROP COLUMN form_id; ALTER TABLE form_submissions DROP COLUMN data_json;` (SQLite 3.35+) and `DROP TABLE forms; DROP TABLE form_fields; DROP TABLE form_webhooks;`. v1 hard-coded waitlist form needs to be restored from git. `webhook_post`'s extra args are backward-compatible (optional with defaults).
