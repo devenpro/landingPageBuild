@@ -43,7 +43,8 @@ admin_head('Content', 'content');
 
     <div class="mt-6">
         <input id="content-filter" type="search" placeholder="Filter by key…"
-               class="w-full max-w-sm rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+               aria-label="Filter content blocks by key"
+               class="w-full max-w-sm rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
     </div>
 
     <div id="content-groups" class="mt-6 space-y-4">
@@ -54,7 +55,7 @@ admin_head('Content', 'content');
                         <span class="text-base font-semibold text-ink-900"><?= e($section) ?></span>
                         <span class="rounded-full bg-ink-100 px-2 py-0.5 text-xs text-ink-600"><?= count($items) ?></span>
                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-ink-400 transition group-open:rotate-180"><polyline points="6 9 12 15 18 9"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-ink-500 transition group-open:rotate-180"><polyline points="6 9 12 15 18 9"/></svg>
                 </summary>
                 <div class="divide-y divide-ink-100 border-t border-ink-100">
                     <?php foreach ($items as $row): ?>
@@ -68,18 +69,18 @@ admin_head('Content', 'content');
                                     <code class="text-sm font-medium text-ink-900"><?= e($row['key']) ?></code>
                                     <span class="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-brand-700"><?= e($row['type']) ?></span>
                                 </div>
-                                <span class="content-row-status text-xs text-ink-400" data-original="<?= e((string)$row['updated_at']) ?>">
+                                <span class="content-row-status text-xs text-ink-500" data-original="<?= e((string)$row['updated_at']) ?>">
                                     updated <?= e((string)$row['updated_at']) ?>
                                 </span>
                             </div>
                             <div class="mt-3 flex items-stretch gap-2">
                                 <?php if ($is_long): ?>
                                     <textarea
-                                        class="content-row-input min-h-[5rem] w-full resize-y rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-mono text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                                        class="content-row-input min-h-[5rem] w-full resize-y rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-mono text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
                                         rows="3"><?= $value_for_attr ?></textarea>
                                 <?php else: ?>
                                     <input type="text"
-                                        class="content-row-input w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                                        class="content-row-input w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
                                         value="<?= $value_for_attr ?>">
                                 <?php endif; ?>
                                 <?php if ($row['type'] === 'image' || $row['type'] === 'video'): ?>
@@ -95,13 +96,13 @@ admin_head('Content', 'content');
                                 </button>
                             </div>
                             <?php if ($row['type'] === 'list'): ?>
-                                <p class="mt-1.5 text-xs text-ink-400">Expects JSON array, e.g. <code>["one","two","three"]</code></p>
+                                <p class="mt-1.5 text-xs text-ink-500">Expects JSON array, e.g. <code>["one","two","three"]</code></p>
                             <?php elseif ($row['type'] === 'icon'): ?>
-                                <p class="mt-1.5 text-xs text-ink-400">Lucide icon name, e.g. <code>calendar-days</code> &mdash; see <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="underline">lucide.dev/icons</a></p>
+                                <p class="mt-1.5 text-xs text-ink-500">Lucide icon name, e.g. <code>calendar-days</code> &mdash; see <a href="https://lucide.dev/icons" target="_blank" rel="noopener" class="underline">lucide.dev/icons</a></p>
                             <?php elseif ($row['type'] === 'image'): ?>
-                                <p class="mt-1.5 text-xs text-ink-400">Image URL or path — paste, or click <strong>Browse media</strong> to pick from <a href="/admin/media.php" class="underline">your library</a>.</p>
+                                <p class="mt-1.5 text-xs text-ink-500">Image URL or path — paste, or click <strong>Browse media</strong> to pick from <a href="/admin/media.php" class="underline">your library</a>.</p>
                             <?php elseif ($row['type'] === 'video'): ?>
-                                <p class="mt-1.5 text-xs text-ink-400">Video URL or path — paste, or click <strong>Browse media</strong>.</p>
+                                <p class="mt-1.5 text-xs text-ink-500">Video URL or path — paste, or click <strong>Browse media</strong>.</p>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
@@ -165,7 +166,7 @@ admin_head('Content', 'content');
                     const url = item.url;
                     const thumb = item.kind === 'image'
                         ? '<img src="' + escapeHtml(url) + '" alt="" loading="lazy" class="h-full w-full object-cover">'
-                        : '<div class="grid h-full w-full place-items-center text-ink-400 text-xs uppercase">' + escapeHtml(item.kind) + '</div>';
+                        : '<div class="grid h-full w-full place-items-center text-ink-500 text-xs uppercase">' + escapeHtml(item.kind) + '</div>';
                     return '<button type="button" class="picker-pick group flex flex-col overflow-hidden rounded-xl border border-ink-100 bg-white text-left hover:border-brand-300" data-url="' + escapeHtml(url) + '">' +
                         '<div class="aspect-square w-full bg-ink-50">' + thumb + '</div>' +
                         '<div class="px-2 py-1.5 text-[11px] truncate text-ink-700" title="' + escapeHtml(item.original_name) + '">' + escapeHtml(item.original_name) + '</div>' +

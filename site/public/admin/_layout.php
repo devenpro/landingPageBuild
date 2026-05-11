@@ -48,7 +48,7 @@ function admin_head(string $title, string $active = ''): void
                 <span class="grid h-7 w-7 place-items-center rounded-md bg-brand-600 text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
                 </span>
-                <span><?= e(GUA_SITE_NAME) ?> <span class="text-ink-400">/ admin</span></span>
+                <span><?= e(GUA_SITE_NAME) ?> <span class="text-ink-500">/ admin</span></span>
             </a>
             <div class="flex items-center gap-4 text-sm">
                 <span class="hidden text-ink-500 sm:inline"><?= $user ? e($user['email']) : '' ?></span>
@@ -71,7 +71,7 @@ function admin_head(string $title, string $active = ''): void
                 } elseif ($item['live']) {
                     $cls = $base_class . ' border-transparent text-ink-500 hover:text-ink-800';
                 } else {
-                    $cls = $base_class . ' cursor-not-allowed border-transparent text-ink-300';
+                    $cls = $base_class . ' cursor-not-allowed border-transparent text-ink-500';
                 }
             ?>
                 <?php if ($item['live']): ?>

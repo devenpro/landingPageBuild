@@ -137,11 +137,20 @@
     }
 
     function openPanel()  { panel.classList.add('gua-chat__panel--open');  bubble.setAttribute('aria-expanded', 'true');  setTimeout(() => input.focus(), 50); }
-    function closePanel() { panel.classList.remove('gua-chat__panel--open'); bubble.setAttribute('aria-expanded', 'false'); }
+    function closePanel() { panel.classList.remove('gua-chat__panel--open'); bubble.setAttribute('aria-expanded', 'false'); bubble.focus(); }
     function togglePanel() {
         if (panel.classList.contains('gua-chat__panel--open')) closePanel();
         else openPanel();
     }
+
+    // Escape closes the panel when it's open and returns focus to the bubble.
+    // Listening on document so it fires regardless of what's focused inside
+    // the panel (the textarea swallows keydowns otherwise).
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && panel.classList.contains('gua-chat__panel--open')) {
+            closePanel();
+        }
+    });
 
     async function send() {
         const text = input.value.trim();

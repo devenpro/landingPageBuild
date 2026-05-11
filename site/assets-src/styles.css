@@ -86,7 +86,7 @@ body { font-feature-settings: 'cv11', 'ss01', 'ss03'; }
     transition: transform 120ms ease, box-shadow 120ms ease;
 }
 .gua-chat__bubble:hover { transform: translateY(-2px); }
-.gua-chat__bubble:focus-visible { outline: 3px solid #c4b5fd; outline-offset: 3px; }
+.gua-chat__bubble:focus-visible { outline: 3px solid #8b5cf6; outline-offset: 3px; }
 .gua-chat__bubble-icon { display: inline-block; line-height: 1; }
 
 .gua-chat__panel {
@@ -185,7 +185,10 @@ body { font-feature-settings: 'cv11', 'ss01', 'ss03'; }
     max-height: 120px;
     outline: none;
 }
-.gua-chat__input:focus { border-color: var(--gua-chat-brand); box-shadow: 0 0 0 3px rgba(124, 58, 237, .15); }
+/* Focus ring is solid brand-500 (#8b5cf6, 4.23:1 vs white) — WCAG 1.4.11
+   requires 3:1 against the adjacent background, and the previous
+   rgba(brand-600, .15) ring fell well under that. */
+.gua-chat__input:focus { border-color: var(--gua-chat-brand); box-shadow: 0 0 0 3px #8b5cf6; }
 .gua-chat__send {
     background: var(--gua-chat-brand);
     color: var(--gua-chat-brand-fg);

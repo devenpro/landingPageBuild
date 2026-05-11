@@ -36,7 +36,7 @@
                     <span class="text-brand-600" aria-hidden="true">*</span>
                 </label>
                 <input id="full_name" name="full_name" type="text" required maxlength="100" autocomplete="name"
-                       class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                       class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -46,7 +46,7 @@
                         <span class="text-brand-600" aria-hidden="true">*</span>
                     </label>
                     <input id="email" name="email" type="email" required maxlength="150" autocomplete="email"
-                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div>
                     <label for="phone" class="mb-1.5 block text-sm font-medium text-ink-800">
@@ -55,7 +55,7 @@
                     </label>
                     <input id="phone" name="phone" type="tel" required maxlength="25" autocomplete="tel"
                            placeholder="<?= e(c('form.phone_placeholder')) ?>"
-                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                           class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
             </div>
 
@@ -66,7 +66,7 @@
                         <span class="text-brand-600" aria-hidden="true">*</span>
                     </label>
                     <select id="role" name="role" required
-                            class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                            class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                         <option value=""><?= e(c('form.role_placeholder')) ?></option>
                         <?php foreach (c_list('form.role_options', ['Freelancer','Agency Owner','In-house Marketer','Other']) as $opt): ?>
                             <option><?= e($opt) ?></option>
@@ -78,7 +78,7 @@
                         <span data-edit="text" data-key="form.clients_label"><?= e(c('form.clients_label')) ?></span>
                     </label>
                     <select id="clients_managed" name="clients_managed"
-                            class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                            class="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
                         <option value=""><?= e(c('form.clients_placeholder')) ?></option>
                         <?php foreach (c_list('form.clients_options', ['1–3','4–10','10+','Just exploring']) as $opt): ?>
                             <option><?= e($opt) ?></option>
@@ -93,16 +93,16 @@
                 </label>
                 <textarea id="bottleneck" name="bottleneck" maxlength="500" rows="3"
                           placeholder="<?= e(c('form.bottleneck_placeholder')) ?>"
-                          class="w-full resize-none rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"></textarea>
+                          class="w-full resize-none rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-base text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
             </div>
 
             <button id="waitlist-submit" type="submit"
-                    class="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                    class="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
                 <span id="waitlist-submit-label" data-edit="text" data-key="form.submit_label"><?= e(c('form.submit_label')) ?></span>
                 <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i>
             </button>
 
-            <p class="text-center text-xs text-ink-400">
+            <p class="text-center text-xs text-ink-500">
                 <span data-edit="text" data-key="form.privacy_note"><?= e(c('form.privacy_note')) ?></span>
             </p>
 

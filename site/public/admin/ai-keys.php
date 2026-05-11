@@ -46,7 +46,7 @@ admin_head('AI keys', 'ai_keys');
     </p>
     <p class="mt-2 text-sm text-ink-500">
         Default provider: <code class="rounded bg-ink-100 px-1.5 py-0.5 text-ink-800"><?= e($default_provider) ?></code>
-        <span class="text-ink-400">— change via <code>AI_DEFAULT_PROVIDER</code> in <code>.env</code>.</span>
+        <span class="text-ink-500">— change via <code>AI_DEFAULT_PROVIDER</code> in <code>.env</code>.</span>
     </p>
 
     <?php if (!$master_key_ok): ?>
@@ -108,7 +108,7 @@ admin_head('AI keys', 'ai_keys');
                     <label class="block text-xs font-medium text-ink-600">
                         Provider
                         <select name="provider" required
-                                class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                                class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
                             <?php foreach (GUA_AI_PROVIDERS as $p): ?>
                                 <option value="<?= e($p) ?>" <?= $p === $default_provider ? 'selected' : '' ?>>
                                     <?= e($p) ?><?= $p === $default_provider ? ' (default)' : '' ?>
@@ -119,14 +119,14 @@ admin_head('AI keys', 'ai_keys');
                     <label class="block text-xs font-medium text-ink-600">
                         Label (optional)
                         <input type="text" name="label" maxlength="100" placeholder="e.g. personal-free"
-                               class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 text-sm placeholder:text-ink-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
-                        <span class="mt-1 block text-[11px] font-normal text-ink-400">Helps when you keep more than one key per provider.</span>
+                               class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 text-sm placeholder:text-ink-500 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <span class="mt-1 block text-[11px] font-normal text-ink-500">Helps when you keep more than one key per provider.</span>
                     </label>
                     <label class="block text-xs font-medium text-ink-600">
                         API key
                         <input type="password" name="api_key" required autocomplete="off" spellcheck="false"
-                               class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 font-mono text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
-                        <span class="mt-1 block text-[11px] font-normal text-ink-400">Sent over HTTPS, encrypted with the master key, never echoed back.</span>
+                               class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-2.5 py-2 font-mono text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <span class="mt-1 block text-[11px] font-normal text-ink-500">Sent over HTTPS, encrypted with the master key, never echoed back.</span>
                     </label>
                     <button type="submit"
                             class="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:bg-ink-300">

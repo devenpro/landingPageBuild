@@ -19,7 +19,7 @@
         </div>
 
         <a href="#waitlist"
-           class="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2">
+           class="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
             <span data-edit="text" data-key="nav.cta_label"><?= e(c('nav.cta_label')) ?></span>
             <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i>
         </a>

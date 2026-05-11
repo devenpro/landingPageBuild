@@ -34,6 +34,8 @@
         });
         form.querySelectorAll('.is-invalid').forEach(function (el) {
             el.classList.remove('is-invalid', 'border-red-400', 'ring-red-200');
+            el.removeAttribute('aria-invalid');
+            el.removeAttribute('aria-describedby');
         });
     }
 
@@ -41,8 +43,12 @@
         const input = form.elements.namedItem(name);
         if (!input) return;
         input.classList.add('is-invalid', 'border-red-400');
+        const errorId = 'err-' + name;
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-describedby', errorId);
         const note = document.createElement('p');
         note.setAttribute('data-field-error', '');
+        note.id = errorId;
         note.className = 'mt-1 text-xs text-red-600';
         note.textContent = message;
         input.parentNode.appendChild(note);
@@ -112,6 +118,8 @@
         el.addEventListener('blur', function () {
             if (el.classList.contains('is-invalid') && el.checkValidity()) {
                 el.classList.remove('is-invalid', 'border-red-400');
+                el.removeAttribute('aria-invalid');
+                el.removeAttribute('aria-describedby');
                 const note = el.parentNode.querySelector('[data-field-error]');
                 if (note) note.remove();
             }

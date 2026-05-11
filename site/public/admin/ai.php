@@ -81,7 +81,7 @@ admin_head('AI tools', 'ai_tools');
                     Brief
                     <textarea name="brief" rows="5" maxlength="4000" required
                               placeholder="E.g. We're a Bangalore-based SEO agency for D2C founders; flagship product is a 30-day audit-and-fix sprint."
-                              class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200"></textarea>
+                              class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                 </label>
                 <button type="submit" class="inline-flex items-center justify-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:bg-ink-300">
                     Suggest pages
@@ -101,13 +101,13 @@ admin_head('AI tools', 'ai_tools');
                     Slug (optional)
                     <input type="text" name="slug" maxlength="200"
                            placeholder="e.g. services/seo-audit (leave blank to let AI pick)"
-                           class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm placeholder:text-ink-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                           class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </label>
                 <label class="block text-xs font-medium text-ink-600">
                     Brief
                     <textarea name="brief" rows="5" maxlength="4000" required
                               placeholder="What's the page about? Who's it for? What action should visitors take?"
-                              class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-200"></textarea>
+                              class="mt-1 block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                 </label>
                 <button type="submit" class="inline-flex items-center justify-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:bg-ink-300">
                     Generate draft
@@ -180,7 +180,7 @@ admin_head('AI tools', 'ai_tools');
                     return;
                 }
                 const usage = body.usage || {};
-                let html = '<div class="mb-2 text-xs text-ink-400">' +
+                let html = '<div class="mb-2 text-xs text-ink-500">' +
                     escapeHtml(usage.provider || '') + ' · ' + escapeHtml(usage.model || '') +
                     ' · ' + (usage.tokens_in || 0) + ' in / ' + (usage.tokens_out || 0) + ' out' +
                     '</div><ul class="divide-y divide-ink-100">';
@@ -196,7 +196,7 @@ admin_head('AI tools', 'ai_tools');
                             '</button>' +
                         '</div>' +
                         (s.description ? '<div class="mt-1 text-ink-700">' + escapeHtml(s.description) + '</div>' : '') +
-                        (s.why ? '<div class="mt-1 text-xs text-ink-400">' + escapeHtml(s.why) + '</div>' : '') +
+                        (s.why ? '<div class="mt-1 text-xs text-ink-500">' + escapeHtml(s.why) + '</div>' : '') +
                         '</li>';
                 }
                 html += '</ul>';
@@ -255,7 +255,7 @@ admin_head('AI tools', 'ai_tools');
                         '<a href="/admin/pages.php?action=edit&id=' + (body.page_id || 0) + '" class="rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs text-ink-700 hover:border-brand-300 hover:bg-brand-50">Edit in Pages</a>' +
                         '<a href="/admin/content.php?q=page.' + escapeHtml(body.slug) + '." class="rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs text-ink-700 hover:border-brand-300 hover:bg-brand-50">Edit content keys</a>' +
                     '</div>' +
-                    '<div class="mt-2 text-xs text-ink-400">' +
+                    '<div class="mt-2 text-xs text-ink-500">' +
                         escapeHtml(usage.provider || '') + ' · ' + escapeHtml(usage.model || '') +
                         ' · ' + (usage.tokens_in || 0) + ' in / ' + (usage.tokens_out || 0) + ' out' +
                     '</div>';

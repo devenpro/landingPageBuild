@@ -130,7 +130,7 @@ function webhooks_status_class(string $s): string
         'failed'    => 'bg-red-50 text-red-700',
         'exhausted' => 'bg-red-50 text-red-700',
         'cancelled' => 'bg-ink-100 text-ink-500',
-        default     => 'bg-ink-100 text-ink-400',
+        default     => 'bg-ink-100 text-ink-500',
     };
 }
 
@@ -194,7 +194,7 @@ admin_head('Webhooks', 'webhooks');
                                 <?php if ($r['submission_id'] !== null): ?>
                                     <a href="/admin/forms.php?q=<?= (int)$r['submission_id'] ?>" class="text-brand-700 hover:underline">#<?= (int)$r['submission_id'] ?></a>
                                 <?php else: ?>
-                                    <span class="text-ink-400">—</span>
+                                    <span class="text-ink-500">—</span>
                                 <?php endif; ?>
                             </td>
                             <td class="px-4 py-3 text-ink-600">
@@ -207,13 +207,13 @@ admin_head('Webhooks', 'webhooks');
                             </td>
                             <td class="px-4 py-3 text-ink-700"><?= (int)$r['attempts'] ?>/<?= (int)$r['max_attempts'] ?></td>
                             <td class="px-4 py-3 text-ink-500 whitespace-nowrap">
-                                <?= $r['status'] === 'pending' ? e((string)$r['next_attempt_at']) : '<span class="text-ink-400">—</span>' ?>
+                                <?= $r['status'] === 'pending' ? e((string)$r['next_attempt_at']) : '<span class="text-ink-500">—</span>' ?>
                             </td>
                             <td class="px-4 py-3 text-ink-600">
                                 <?php if ($r['last_error']): ?>
                                     <span title="HTTP <?= (int)$r['last_http_status'] ?>"><?= e(mb_substr((string)$r['last_error'], 0, 80)) ?></span>
                                 <?php else: ?>
-                                    <span class="text-ink-400">—</span>
+                                    <span class="text-ink-500">—</span>
                                 <?php endif; ?>
                             </td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">

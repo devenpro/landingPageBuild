@@ -16,7 +16,7 @@
             </p>
             <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <a href="#waitlist"
-                   class="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 sm:w-auto">
+                   class="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:w-auto">
                     <span data-edit="text" data-key="hero.cta_label"><?= e(c('hero.cta_label')) ?></span>
                     <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i>
                 </a>
