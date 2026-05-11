@@ -53,6 +53,32 @@ function layout_head(?array $page = null): void
     <meta name="content-prefix" content="<?= e($content_prefix) ?>">
     <?php endif; ?>
 
+    <?php
+    // Phase 14 round A — JSON-LD structured data. Both Organization and
+    // WebSite are emitted on every public page so Google understands what
+    // brand owns the site and what its canonical URL is. Page-level
+    // schemas (Product, FAQPage, Article) come in later rounds when the
+    // CMS has fields to drive them.
+    $jsonld_org = array_filter([
+        '@context' => 'https://schema.org',
+        '@type'    => 'Organization',
+        'name'     => GUA_SITE_NAME,
+        'url'      => GUA_APP_URL ?: null,
+        'logo'     => GUA_APP_URL && $og_image ? GUA_APP_URL . $og_image : null,
+        'description' => $desc !== '' ? $desc : null,
+    ]);
+    $jsonld_site = array_filter([
+        '@context' => 'https://schema.org',
+        '@type'    => 'WebSite',
+        'name'     => GUA_SITE_NAME,
+        'url'      => GUA_APP_URL ?: null,
+    ]);
+    ?>
+    <script type="application/ld+json"><?= json_encode($jsonld_org,  JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+    <script type="application/ld+json"><?= json_encode($jsonld_site, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+
+    <link rel="alternate" type="application/xml" title="Sitemap" href="/sitemap.xml">
+
     <!-- Tailwind Play CDN — replaced with hand-built styles.css in Phase 14 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
