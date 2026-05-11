@@ -208,8 +208,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 1 | Settings foundation | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.1.0 |
 | 2 | Brand Context Library | 🟡 | [#23](https://github.com/devenpro/landingPageBuild/pull/23) | 1.2.0 |
 | 3 | Content blocks rework | 🟡 | [#24](https://github.com/devenpro/landingPageBuild/pull/24) (stacked on #23) | 1.3.0 |
-| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🚧 | `v2/stage-4-content-types` (stacked on #24) | 1.4.0 |
-| 5 | Taxonomy | ⏳ | — | 1.5.0 |
+| 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🟡 | [#26](https://github.com/devenpro/landingPageBuild/pull/26) (rebase of #25; stacked on #23/#24) | 1.4.0 |
+| 5 | Taxonomy + Location Services | 🚧 | `v2/stage-5-taxonomy` (stacked on #26) | 1.5.0 |
 | 6 | Forms builder | ⏳ | — | 1.6.0 |
 | 7 | Media v2 (crop/resize/WebP) | ⏳ | — | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | ⏳ | — | 1.8.0 |
@@ -374,3 +374,45 @@ First-class content types replace v1's "everything is a page" model. v1 stored t
 - End-to-end: created a Service entry via the admin API; GET `/services/local-seo-audit` → 200 with title in `<title>`, meta description, hero + CTA + features. Created an Ad LP; GET `/lp/bf-2025-test` → 200 with `<meta name="robots" content="noindex,nofollow">`, Meta Pixel + Google Tag scripts, primary CTA wired to `fbq('track', conversion_event)`.
 
 **Rollback**: revert the commit and `DROP TABLE content_entries; DROP TABLE content_types; DROP TRIGGER IF EXISTS trg_ad_lp_default_robots;`. Routing falls back to pages-only; the 3 detail partials remain in `site/sections/` but become unreachable. No data migration to undo since v1 had no content_types data.
+
+### v2 Stage 5 — Taxonomy + Location Services 🚧 (`v2/stage-5-taxonomy`, stacked on #26)
+
+Adds hierarchical taxonomies for internal classification (SEO topical authority + local relevance) and ships the **Location Services** content type that Stage 4 deferred. Taxonomies aren't auto-rendered as public archives — they're a data layer that drives multi-segment URLs, breadcrumbs, and per-location content lookups.
+
+**Schema** (`core/migrations/0010_taxonomy.sql`)
+- `taxonomies(id, slug UNIQUE, name, is_hierarchical, applies_to_type_ids_json, is_builtin, sort_order, ...)` — taxonomy registry.
+- `taxonomy_terms(id, taxonomy_id, parent_id, slug, name, description, position, ...)` UNIQUE(taxonomy_id, slug) — terms with self-referencing parent for hierarchy.
+- `entry_taxonomy_terms(entry_id, term_id, type_id)` PRIMARY KEY(entry_id, term_id) — many-to-many with denormalised `type_id` for fast filtering by type+term.
+- Seeds: `locations` (hierarchical: country → state → city → area) and `service_categories` (hierarchical) — both empty trees populated via admin.
+- Seeds the `location_services` content type with route_pattern `/services/{service_slug}/{location_slug}` (multi-placeholder).
+
+**Library** (`core/lib/taxonomy.php`)
+- `taxonomies_all` / `taxonomy_by_slug` / `taxonomy_by_id` — registry helpers.
+- `taxonomy_terms($slug, $parent_id = null)` — direct children of a parent (null = root).
+- `taxonomy_terms_all` (flat) / `taxonomy_tree` (nested with `children[]`).
+- `term_path($term_id)` — ordered root-to-leaf ancestor chain for breadcrumb rendering.
+- `term_create` / `term_update` / `term_delete` with slug regex validation (`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`) and cycle prevention (rejects descendant-as-parent, self-parent).
+- `entry_terms($entry_id, $taxonomy_slug?)` — read assignments.
+- `entry_terms_set($entry_id, $type_id, $term_ids[])` — replace assignments transactionally.
+- `entries_for_term($term_id, $type_id?)` — fast lookup via the denormalised type_id index.
+- `taxonomies_for_type($type_id)` — which taxonomies the admin form should expose for an entry of this type (NULL `applies_to_type_ids_json` = all routable; else JSON array of type ids).
+
+**Routing extension** (`core/lib/pages.php`)
+- `content_resolve_route` now supports patterns with multiple placeholders. Collects placeholder names in pattern order, builds a composite slug from the captured groups (e.g. `seo-audit/mumbai`), and looks up `content_entries` by that composite slug. Single-placeholder patterns still work unchanged.
+- `content_entries.slug` validator extended to accept multi-segment slugs (each segment matches the original single-slug rule, segments separated by `/`).
+
+**Frontend**
+- `site/sections/location_service_detail.php` — pulls parent Service entry (by `service_entry_id` in `data_json`) and location term (by `location_term_id`), renders breadcrumb (Home → Service → location ancestors → current), inherits the Service's features list, exposes per-location address/phone/map embed.
+
+**Admin UI**
+- `/admin/taxonomies.php` — two-pane: taxonomies list / indented tree of the active taxonomy with inline add-child / edit (rename, change parent) / delete forms. Add-root-term form at the bottom. Drag-and-drop reorder deferred to Stage 9 (canvas).
+- `/api/taxonomies.php` — POST CRUD on terms (add, update, delete) with CSRF + auth + slug validation; per-operation error redirect.
+- `/admin/content-types.php` extended: shows a multi-select term picker per applicable taxonomy in the entry editor (parent prefix shown with `— ` indentation so hierarchy is readable in the flat select).
+- `/api/content/entries.php` extended: when the form includes `term_ids[]`, `entry_terms_set()` replaces the entry's assignments. Omitting the field leaves existing assignments alone (so non-term forms don't accidentally clear).
+- `_layout.php` nav: 'Taxonomies' slotted between 'Types' and 'Pages'.
+
+**Verification**
+- `core/scripts/test_stage_5.php` — 27 assertions: schema, seed, hierarchical CRUD (3-level India→Maharashtra→Mumbai tree), nested tree shape, `term_path` order, cycle prevention (self-parent + descendant-as-parent), entry term set/read/clear, multi-placeholder route resolution (composite slug lookup), single-segment fallback still works, taxonomies_for_type filter. All pass.
+- End-to-end: admin builds the 3-level locations tree via the UI; creates a Service entry; creates a Location Services entry with composite slug `seo-audit/mumbai`, service/location refs, address + phone; GET `/services/seo-audit/mumbai` returns 200 with full breadcrumb chain, inherited service link, per-location address + phone link; entry's term assignment persisted in `entry_taxonomy_terms`.
+
+**Rollback**: revert the commit and `DROP TABLE entry_taxonomy_terms; DROP TABLE taxonomy_terms; DROP TABLE taxonomies; DELETE FROM content_types WHERE slug='location_services';`. Multi-placeholder routes 404 (only single-slug patterns resolve); `location_service_detail.php` becomes unreachable but harmless.

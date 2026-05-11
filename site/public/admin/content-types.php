@@ -16,6 +16,7 @@ require __DIR__ . '/../../../core/lib/bootstrap.php';
 require __DIR__ . '/_layout.php';
 require_once __DIR__ . '/../../../core/lib/content/types.php';
 require_once __DIR__ . '/../../../core/lib/content/entries.php';
+require_once __DIR__ . '/../../../core/lib/taxonomy.php';
 
 auth_require_login();
 
@@ -201,6 +202,55 @@ admin_head('Content types', 'content_types');
                                 </div>
                             <?php endforeach; ?>
                         </div>
+                    <?php endif; ?>
+
+                    <?php
+                        // v2 Stage 5: term picker per applicable taxonomy.
+                        $applicable_taxonomies = taxonomies_for_type((int)$active_type['id']);
+                        $current_term_ids = [];
+                        foreach (entry_terms((int)$active_entry['id']) as $t) {
+                            $current_term_ids[(int)$t['id']] = true;
+                        }
+                    ?>
+                    <?php if ($applicable_taxonomies !== []): ?>
+                        <details class="rounded-lg border border-ink-100 bg-ink-50/40 p-3">
+                            <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wider text-ink-500">Taxonomies</summary>
+                            <div class="mt-3 space-y-3">
+                                <?php foreach ($applicable_taxonomies as $tax):
+                                    $terms = taxonomy_terms_all((int)$tax['id']);
+                                    if ($terms === []) continue;
+                                ?>
+                                    <div>
+                                        <label class="text-xs font-medium text-ink-700"><?= e($tax['name']) ?></label>
+                                        <select name="term_ids[]" multiple size="<?= min(8, max(3, count($terms))) ?>"
+                                                class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                                            <?php
+                                            // Render with parent prefix for hierarchy clarity
+                                            $by_id = [];
+                                            foreach ($terms as $term) $by_id[(int)$term['id']] = $term;
+                                            $get_depth = function (int $id) use ($by_id): int {
+                                                $d = 0; $cur = $by_id[$id] ?? null; $safety = 0;
+                                                while ($cur !== null && $cur['parent_id'] !== null && $safety < 20) {
+                                                    $cur = $by_id[(int)$cur['parent_id']] ?? null;
+                                                    $d++; $safety++;
+                                                }
+                                                return $d;
+                                            };
+                                            foreach ($terms as $term):
+                                                $d = $get_depth((int)$term['id']);
+                                                $indent = str_repeat('— ', $d);
+                                            ?>
+                                                <option value="<?= (int)$term['id'] ?>"
+                                                    <?= isset($current_term_ids[(int)$term['id']]) ? 'selected' : '' ?>>
+                                                    <?= e($indent . $term['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                <?php endforeach; ?>
+                                <p class="text-xs text-ink-500">Ctrl/Cmd-click to select multiple.</p>
+                            </div>
+                        </details>
                     <?php endif; ?>
 
                     <details class="rounded-lg border border-ink-100 bg-ink-50/40 p-3">

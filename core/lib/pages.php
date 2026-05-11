@@ -21,6 +21,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/content.php';
 require_once __DIR__ . '/content/types.php';
 require_once __DIR__ . '/content/entries.php';
+require_once __DIR__ . '/taxonomy.php';
 
 function parse_slug(string $request_uri): string
 {
@@ -81,8 +82,13 @@ function route_request(?string $request_uri = null): void
 /**
  * Try to match the request URI against every routable content type's
  * route_pattern. Returns ['type' => row, 'entry' => row, 'params' => [...]]
- * or null on no match. Supports single-segment {slug} placeholders for
- * Stage 4; Stage 5 extends this for multi-segment patterns (location services).
+ * or null on no match.
+ *
+ * Supports single-placeholder patterns ('/services/{slug}') and
+ * multi-placeholder patterns ('/services/{service_slug}/{location_slug}').
+ * Captured placeholders are joined with '/' to form the composite entry slug,
+ * preserving the order they appear in route_pattern. For a single placeholder,
+ * the composite slug is just that one captured group.
  */
 function content_resolve_route(string $uri): ?array
 {
@@ -99,8 +105,13 @@ function content_resolve_route(string $uri): ?array
         $pattern = (string)($type['route_pattern'] ?? '');
         if ($pattern === '') continue;
 
+        // Collect placeholder names in pattern order — used to compose the
+        // entry slug when matching succeeds.
+        preg_match_all('/\{([a-z_]+)\}/', $pattern, $pm);
+        $placeholder_names = $pm[1] ?? [];
+        if ($placeholder_names === []) continue;
+
         $regex = preg_quote('/' . trim($pattern, '/'), '#');
-        // Replace {placeholder} (after quoting) with a capture group.
         $regex = preg_replace(
             '/\\\\\\{([a-z_]+)\\\\\\}/',
             '(?<$1>[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)',
@@ -110,10 +121,17 @@ function content_resolve_route(string $uri): ?array
             continue;
         }
 
-        $slug = $m['slug'] ?? null;
-        if ($slug === null) continue;
+        // Build the composite slug in pattern order
+        $parts = [];
+        foreach ($placeholder_names as $name) {
+            if (!isset($m[$name])) {
+                continue 2; // mismatched capture — try next type
+            }
+            $parts[] = $m[$name];
+        }
+        $composite_slug = implode('/', $parts);
 
-        $entry = content_entry_by_slug((int)$type['id'], $slug, 'published');
+        $entry = content_entry_by_slug((int)$type['id'], $composite_slug, 'published');
         if ($entry !== null) {
             return ['type' => $type, 'entry' => $entry, 'params' => $m];
         }
