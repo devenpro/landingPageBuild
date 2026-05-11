@@ -4,7 +4,7 @@
 //
 // Output contract: a structured JSON page that maps cleanly onto our
 // pages + content_blocks schema. v1 supports three sections — hero,
-// features, final_cta — which together make a credible landing page;
+// features, final_cta — which together make a credible business / service / campaign page;
 // extra sections (how_it_works, faq, etc.) are deliberately deferred
 // to a follow-up round so we can ship and iterate. The keys here are
 // the section partials' own keys (see site/sections/*.php for the
@@ -27,7 +27,7 @@
 declare(strict_types=1);
 
 const GUA_GENERATE_PAGE_SYSTEM = <<<'SYS'
-You are a copywriter generating a landing-page draft for a small business.
+You are a copywriter generating a page draft for a multi-page business website.
 
 You output STRICT JSON only. No prose, no markdown, no code fences. The
 JSON must match exactly the schema below. Field types and bounds are
@@ -85,6 +85,11 @@ Hard rules:
 - Copy must be specific to the brief — no filler ("Welcome to our site",
   "Learn more about us"). Reference real benefits, audiences, or outcomes
   the brief mentions or implies.
+- The brief may describe a service detail page, location-service page,
+  company-profile page, ad landing page, or generic marketing page. Adapt
+  the copy to that intent — treat "features" as key information blocks
+  for the page type at hand, not strictly product features. Don't assume
+  the page is a campaign-style landing page unless the brief implies that.
 SYS;
 
 /**
