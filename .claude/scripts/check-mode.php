@@ -7,9 +7,16 @@
 // Code surfaces the stderr message back to the model).
 //
 // Allow-lists:
-//   core mode  → core/**, repo-level docs/configs, .claude/**
-//   site mode  → site/**, data/**, .env
+//   core mode  → core/**, repo-level docs/configs, .claude/**, .brand/**
+//   site mode  → site/**, data/**, .env, .brand/**
 //   no mode    → block all writes with prompt to set a mode
+//
+// .brand/ is the v2 Stage 2 disk mirror of the Brand Context Library. Both
+// modes can write to it: admin saves go through core code paths (Write/Edit
+// from /admin/brand.php is in site/, but the actual disk write happens in
+// core/lib/brand/sync.php), and Claude Code sessions on either mode can
+// edit the markdown files directly. The DB stays canonical — drift is
+// reconciled by the admin via /admin/brand-sync.php.
 
 declare(strict_types=1);
 
@@ -60,7 +67,9 @@ $allow = [
     'core' => [
         'core/',
         '.claude/',
+        '.brand/',
         'README.md',
+        'CLAUDE.md',
         'BUILD_BRIEF.md',
         'MULTI_SITE.md',
         'SETUP_GUIDE.md',
@@ -74,6 +83,7 @@ $allow = [
     'site' => [
         'site/',
         'data/',
+        '.brand/',
         '.env',
     ],
 ];

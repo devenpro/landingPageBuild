@@ -26,6 +26,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../brand_context.php';
+
 const GUA_GENERATE_PAGE_SYSTEM = <<<'SYS'
 You are a copywriter generating a page draft for a multi-page business website.
 
@@ -106,9 +108,19 @@ function generate_page_messages(string $brief, ?string $slug = null): array
     $brief = trim($brief);
     $slug  = $slug !== null ? trim($slug) : '';
 
+    // v2 Stage 2: prepend Brand Context Library content covering brand voice,
+    // audience, services, design guidance, and page-build conventions.
+    // Empty when BCL has no reviewed items yet, so safe on fresh sites.
+    $brand = brand_context_for_categories([
+        'brand_voice', 'audience', 'services', 'design_guide', 'page_guide',
+    ]);
+
     $user = "Brief:\n\n{$brief}";
     if ($slug !== '') {
         $user .= "\n\nUse this slug exactly: {$slug}";
+    }
+    if ($brand !== '') {
+        $user = "Brand context:\n\n{$brand}\n\n---\n\n" . $user;
     }
 
     return [

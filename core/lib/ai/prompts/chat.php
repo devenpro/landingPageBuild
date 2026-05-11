@@ -18,6 +18,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../content.php';
+require_once __DIR__ . '/../brand_context.php';
 
 /**
  * Build the system prompt from current site content. Cheap (one DB
@@ -52,6 +53,20 @@ function chat_system_prompt(): string
     }
 
     $context = "Site: $site_name\n\n";
+
+    // v2 Stage 2: prepend Brand Context Library digest so the chatbot has the
+    // brand's voice, audience, and services as ground truth — not just the
+    // public-page content blocks. brand_context_summary() returns '' when the
+    // BCL has no reviewed content yet, so this is safe on fresh sites.
+    $brand = brand_context_summary();
+    if ($brand !== '') {
+        $context .= $brand . "\n\n";
+    }
+    $always = brand_context_always();
+    if ($always !== '') {
+        $context .= $always . "\n\n";
+    }
+
     if ($hero !== '') {
         $context .= "What the site offers:\n$hero\n\n";
     }

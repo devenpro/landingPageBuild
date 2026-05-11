@@ -2,8 +2,9 @@
 // site/public/admin/_layout.php — admin chrome.
 // admin_head($title, $active='') opens the document and renders the nav.
 // admin_foot() closes it. Each admin page passes the slug of the active
-// nav item (one of: 'dashboard', 'content', 'pages', 'forms', 'media',
-// 'ai_keys', 'ai_tools', 'settings') so the right link is highlighted.
+// nav item (one of: 'dashboard', 'content', 'pages', 'brand', 'forms',
+// 'webhooks', 'media', 'ai_keys', 'ai_tools', 'settings') so the right
+// link is highlighted.
 //
 // Tailwind config lives in one place here so dashboard / content / forms
 // pages don't repeat it. Phase 14 swaps the Tailwind CDN for a built
@@ -17,6 +18,7 @@ function admin_nav_items(): array
         ['slug' => 'dashboard', 'label' => 'Dashboard', 'href' => '/admin/dashboard.php', 'live' => true],
         ['slug' => 'content',   'label' => 'Content',   'href' => '/admin/content.php',   'live' => true],
         ['slug' => 'pages',     'label' => 'Pages',     'href' => '/admin/pages.php',     'live' => true],
+        ['slug' => 'brand',     'label' => 'Brand',     'href' => '/admin/brand.php',     'live' => true],
         ['slug' => 'forms',     'label' => 'Forms',     'href' => '/admin/forms.php',     'live' => true],
         ['slug' => 'webhooks',  'label' => 'Webhooks',  'href' => '/admin/webhooks.php',  'live' => true],
         ['slug' => 'media',     'label' => 'Media',     'href' => '/admin/media.php',     'live' => true],
