@@ -14,6 +14,7 @@ declare(strict_types=1);
 require __DIR__ . '/../../../../core/lib/bootstrap.php';
 require_once __DIR__ . '/../../../../core/lib/content/types.php';
 require_once __DIR__ . '/../../../../core/lib/content/entries.php';
+require_once __DIR__ . '/../../../../core/lib/taxonomy.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     http_response_code(405);
@@ -93,6 +94,20 @@ try {
                 }
             }
             content_entry_update($id, $updates, (int)$user['id']);
+
+            // v2 Stage 5: persist term assignments. If the form submits no
+            // term_ids field at all, leave existing assignments alone. If it
+            // submits an empty array (e.g. admin deselected all), clear them.
+            if (array_key_exists('term_ids', $_POST)) {
+                $term_ids = $_POST['term_ids'];
+                if (!is_array($term_ids)) $term_ids = [];
+                $existing = content_entry_by_id($id);
+                $type_id = $existing ? (int)$existing['type_id'] : 0;
+                if ($type_id > 0) {
+                    entry_terms_set($id, $type_id, $term_ids);
+                }
+            }
+
             $sep = str_contains($back, '?') ? '&' : '?';
             entries_redirect($back . $sep . 'entry=' . $id . '&saved=1');
         }

@@ -19,6 +19,7 @@ function admin_nav_items(): array
         ['slug' => 'content',        'label' => 'Content',   'href' => '/admin/content.php',        'live' => true],
         ['slug' => 'blocks',         'label' => 'Blocks',    'href' => '/admin/blocks.php',         'live' => true],
         ['slug' => 'content_types',  'label' => 'Types',     'href' => '/admin/content-types.php',  'live' => true],
+        ['slug' => 'taxonomies',     'label' => 'Taxonomies','href' => '/admin/taxonomies.php',     'live' => true],
         ['slug' => 'pages',          'label' => 'Pages',     'href' => '/admin/pages.php',          'live' => true],
         ['slug' => 'brand',          'label' => 'Brand',     'href' => '/admin/brand.php',          'live' => true],
         ['slug' => 'forms',     'label' => 'Forms',     'href' => '/admin/forms.php',     'live' => true],
