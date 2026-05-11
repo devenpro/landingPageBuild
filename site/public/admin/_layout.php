@@ -17,6 +17,7 @@ function admin_nav_items(): array
     return [
         ['slug' => 'dashboard', 'label' => 'Dashboard', 'href' => '/admin/dashboard.php', 'live' => true],
         ['slug' => 'content',   'label' => 'Content',   'href' => '/admin/content.php',   'live' => true],
+        ['slug' => 'blocks',    'label' => 'Blocks',    'href' => '/admin/blocks.php',    'live' => true],
         ['slug' => 'pages',     'label' => 'Pages',     'href' => '/admin/pages.php',     'live' => true],
         ['slug' => 'brand',     'label' => 'Brand',     'href' => '/admin/brand.php',     'live' => true],
         ['slug' => 'forms',     'label' => 'Forms',     'href' => '/admin/forms.php',     'live' => true],
