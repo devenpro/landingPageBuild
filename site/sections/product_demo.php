@@ -17,8 +17,10 @@
             <img src="<?= e(c('demo.image')) ?>"
                  alt="<?= e(c('demo.image_alt')) ?>"
                  data-edit="image" data-key="demo.image"
-                 class="w-full rounded-2xl border border-ink-100 bg-white shadow-xl shadow-brand-900/5"
-                 loading="lazy">
+                 width="1600" height="900"
+                 class="h-auto w-full rounded-2xl border border-ink-100 bg-white shadow-xl shadow-brand-900/5"
+                 loading="lazy"
+                 decoding="async">
         </div>
     </div>
 </section>

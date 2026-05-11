@@ -7,7 +7,7 @@
     <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <a href="/" class="flex items-center gap-2 text-base font-semibold tracking-tight text-ink-900">
             <span class="grid h-7 w-7 place-items-center rounded-md bg-brand-600 text-white">
-                <i data-lucide="zap" class="h-4 w-4" aria-hidden="true"></i>
+                <?= lucide('zap', 'h-4 w-4') ?>
             </span>
             <span data-edit="text" data-key="nav.brand"><?= e(c('nav.brand')) ?></span>
         </a>
@@ -21,7 +21,7 @@
         <a href="#waitlist"
            class="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
             <span data-edit="text" data-key="nav.cta_label"><?= e(c('nav.cta_label')) ?></span>
-            <i data-lucide="arrow-right" class="h-4 w-4" aria-hidden="true"></i>
+            <?= lucide('arrow-right', 'h-4 w-4') ?>
         </a>
     </nav>
 </header>

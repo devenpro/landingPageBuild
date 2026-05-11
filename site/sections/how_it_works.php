@@ -18,9 +18,7 @@
                 <li class="relative">
                     <div class="flex items-center gap-3">
                         <span class="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-sm font-semibold text-white"><?= $i ?></span>
-                        <i data-edit="icon" data-key="step.<?= $i ?>.icon"
-                           data-lucide="<?= e(c("step.$i.icon")) ?>"
-                           class="h-5 w-5 text-brand-700" aria-hidden="true"></i>
+                        <?= lucide(c("step.$i.icon"), 'h-5 w-5 text-brand-700', ['data-edit' => 'icon', 'data-key' => "step.$i.icon"]) ?>
                     </div>
                     <h3 class="mt-4 text-base font-semibold text-ink-900">
                         <span data-edit="text" data-key="step.<?= $i ?>.title"><?= e(c("step.$i.title")) ?></span>

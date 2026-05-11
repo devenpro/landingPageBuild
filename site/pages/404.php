@@ -22,7 +22,7 @@ require __DIR__ . '/../sections/navbar.php';
     <div class="mt-8">
         <a href="/"
            class="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
-            <i data-lucide="arrow-left" class="h-4 w-4" aria-hidden="true"></i>
+            <?= lucide('arrow-left', 'h-4 w-4') ?>
             Back to home
         </a>
     </div>

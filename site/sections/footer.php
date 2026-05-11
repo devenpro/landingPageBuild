@@ -8,7 +8,7 @@
             <div>
                 <div class="flex items-center gap-2 text-base font-semibold text-ink-900">
                     <span class="grid h-7 w-7 place-items-center rounded-md bg-brand-600 text-white">
-                        <i data-lucide="zap" class="h-4 w-4" aria-hidden="true"></i>
+                        <?= lucide('zap', 'h-4 w-4') ?>
                     </span>
                     <span><?= e(c('nav.brand')) ?></span>
                 </div>

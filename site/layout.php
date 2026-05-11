@@ -29,8 +29,11 @@ function layout_head(?array $page = null): void
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#7c3aed">
     <title><?= e($title) ?></title>
     <meta name="description" content="<?= e($desc) ?>">
+
+    <link rel="canonical" href="<?= e($url) ?>">
 
     <meta property="og:title" content="<?= e($title) ?>">
     <meta property="og:description" content="<?= e($desc) ?>">
@@ -96,11 +99,11 @@ function layout_foot(): void
     $admin = auth_current_user();
     $is_editor = $admin !== null;
     ?>
-<!-- Lucide icons (initialised after sections render) -->
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<script>
-  if (window.lucide) { lucide.createIcons(); }
-</script>
+<?php // Lucide icons are emitted server-side via core/lib/lucide.php (Phase 14
+      // round D-3). The previous unpkg.com/lucide@latest UMD bundle was ~358KB
+      // of render-blocking JS to swap <i> tags for SVGs — replaced with a 21KB
+      // PHP path map that emits the SVG directly. Re-run
+      // core/build/extract-lucide.php to add an icon. ?>
 
 <?php if ($is_editor): ?>
 <div id="edit-mode-bar"

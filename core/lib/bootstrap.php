@@ -14,6 +14,7 @@ require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/pages.php';
 require_once __DIR__ . '/webhook.php';
+require_once __DIR__ . '/lucide.php';
 
 // Start the session before any output so Set-Cookie headers can be sent.
 // CSRF tokens (Phase 5) and admin auth (Phase 6+) both depend on $_SESSION.
