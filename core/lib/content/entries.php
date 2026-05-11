@@ -98,7 +98,11 @@ function content_entry_create(array $fields, ?int $user_id = null): int
     $slug = $fields['slug'] ?? null;
     if ($slug !== null && $slug !== '') {
         $slug = (string)$slug;
-        if (!preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/', $slug)) {
+        // v2 Stage 5: routable types with multi-placeholder patterns (e.g.
+        // location_services at /services/{service_slug}/{location_slug}) use
+        // composite slugs separated by '/'. Each segment must match the
+        // single-slug rule individually.
+        if (!preg_match('#^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$#', $slug)) {
             throw new InvalidArgumentException("content_entry: invalid slug '$slug'");
         }
     } else {
@@ -152,7 +156,11 @@ function content_entry_update(int $id, array $fields, ?int $user_id = null): voi
     $slug = array_key_exists('slug', $fields) ? $fields['slug'] : $existing['slug'];
     if ($slug !== null && $slug !== '') {
         $slug = (string)$slug;
-        if (!preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/', $slug)) {
+        // v2 Stage 5: routable types with multi-placeholder patterns (e.g.
+        // location_services at /services/{service_slug}/{location_slug}) use
+        // composite slugs separated by '/'. Each segment must match the
+        // single-slug rule individually.
+        if (!preg_match('#^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$#', $slug)) {
             throw new InvalidArgumentException("content_entry: invalid slug '$slug'");
         }
     } else {
