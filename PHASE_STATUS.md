@@ -210,8 +210,8 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 3 | Content blocks rework | 🟡 | [#24](https://github.com/devenpro/landingPageBuild/pull/24) (stacked on #23) | 1.3.0 |
 | 4 | Content types + Content Manage hub (Pages, Testimonials, Services, Ad Landing Pages) | 🟡 | [#26](https://github.com/devenpro/landingPageBuild/pull/26) (rebase of #25; stacked on #23/#24) | 1.4.0 |
 | 5 | Taxonomy + Location Services | 🟡 | [#28](https://github.com/devenpro/landingPageBuild/pull/28) (rebase of #27, merged into integration) | 1.5.0 |
-| 6 | Forms builder | 🚧 | `v2/stage-6-forms` | 1.6.0 |
-| 7 | Media v2 (crop/resize/WebP) | ⏳ | — | 1.7.0 |
+| 6 | Forms builder | 🟡 | [#30](https://github.com/devenpro/landingPageBuild/pull/30) (merged) + [#31](https://github.com/devenpro/landingPageBuild/pull/31) fresh-install fix | 1.6.0 |
+| 7 | Media v2 (resize/WebP variants) | 🚧 | `v2/stage-7-media` | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | ⏳ | — | 1.8.0 |
 | 9 | Front-end canvas polish | ⏳ | — | 1.9.0 |
 | 10 | Site Bootstrap | ⏳ | — | 2.0.0 |
@@ -461,3 +461,34 @@ Multi-form CRUD with per-form fields and per-form webhooks. v1 had the waitlist 
 - End-to-end via dev server: waitlist POSTs continue to work (returns 200, data_json captured, legacy columns populated). Admin creates a 2nd "contact" form, adds 3 fields, marks all required. Public POST to `/api/form.php?form=contact` validates, persists with `form_id=2`, data_json contains name/email/message. Admin index view lists both forms with submission counts.
 
 **Rollback**: revert the commit + `ALTER TABLE form_submissions DROP COLUMN form_id; ALTER TABLE form_submissions DROP COLUMN data_json;` (SQLite 3.35+) and `DROP TABLE forms; DROP TABLE form_fields; DROP TABLE form_webhooks;`. v1 hard-coded waitlist form needs to be restored from git. `webhook_post`'s extra args are backward-compatible (optional with defaults).
+
+### v2 Stage 7 — Media v2 (resize/WebP variants) 🚧 (`v2/stage-7-media`)
+
+Real image processing pipeline. v1 stored the raw upload and that was it — no derivative sizes, no WebP, alt text lived in `content_blocks` values. v2 Stage 7 generates a set of resized variants (and WebP twins) on every upload, captures the original dimensions, and centralizes `alt_text` + `caption` on `media_assets` so a single edit propagates wherever the image is referenced.
+
+**Schema** (`core/migrations/0012_media_v2.sql`)
+- `media_assets`: `ALTER ADD` `alt_text`, `caption`, `original_width`, `original_height`, `processed` (int, default 0), `processing_error` (text).
+- New `media_variants(id, media_id, preset_name, width, height, mime_type, path, size_bytes, generated_at)` UNIQUE(media_id, preset_name). `path` is repo-relative (e.g. `site/public/uploads/variants/12/w320.jpg`).
+- 4 new settings rows: `media_preset_widths` (JSON array, default `[320,640,960,1280,1920,2560]`), `media_webp_enabled` (default on), `media_webp_quality` (82), `media_jpeg_quality` (85).
+
+**Library** (`core/lib/media/processor.php`)
+- `media_processor_driver()` returns `imagick` (preferred), `gd` (fallback), or `none`.
+- `media_process($id)` reads the source, generates one resized variant per preset width (smaller than original) plus an optional WebP twin, persists `media_variants` rows + variant files on disk under `site/public/uploads/variants/<id>/`. Captures `original_width`/`original_height` on the asset row. Sets `processed=1` or `processing_error`. Idempotent (clears previous variants + files on reprocess).
+- `media_process_all(only_unprocessed=true)` backfills v1 uploads.
+- `media_variants_for($id)` returns the rows.
+- Imagick path uses `FILTER_LANCZOS` for quality + `stripImage()` for metadata. GD path preserves PNG/WebP transparency via `imagealphablending` + `imagesavealpha`.
+- SVGs are skipped (no raster output); videos are tracked but not processed (no transcoding pipeline yet).
+
+**Hooks**
+- `site/public/api/upload.php` calls `media_process()` immediately after the `INSERT`. Failure does NOT roll back the upload — the asset is still usable, just unprocessed; `processing_error` captures the message. Upload response now includes a `variants: {processed, count, error}` block.
+- `core/scripts/media_reprocess.php` — CLI to backfill v1 uploads (`--all` flag re-processes everything).
+
+**Admin**
+- `/admin/media.php` extended: each card now shows the original dimensions, an inline alt-text input (blur-saves via PATCH `/api/media.php?_method=PATCH`), and a state badge — green `6v` (variant count), gray `raw` (image not yet processed), rose `err` (processing failed; tooltip shows the error).
+- `/api/media.php` extended: GET returns `alt_text`, `caption`, `original_width`/`height`, `processed`/`processing_error`, and a `variants[]` array with each variant's preset/width/height/mime_type/URL/size_bytes. New PATCH method (also accepts `POST?_method=PATCH` for clients that can't send PATCH) updates alt_text and/or caption, and optionally re-triggers processing via `reprocess: true`. DELETE now collects variant paths BEFORE the FK CASCADE drops them, cleans up the variant files + empty variants directory.
+
+**Verification**
+- `core/scripts/test_stage_7.php` — 27 assertions: schema (6 new columns + 1 new table), seed (4 settings keys), driver detection, processor generates expected variants on a real 800×600 JPEG (320 + 640 widths only, since 960+ ≥ original — so 4 variants total with WebP enabled), variant files exist on disk, processed flag + original dimensions captured, reprocess is idempotent, `media_process_all` backfills unprocessed assets. All pass.
+- End-to-end via dev server: uploaded a 1200×800 JPEG via `/api/upload.php` → 6 variants generated (320/640/960 widths × JPEG/WebP), original dimensions captured, `processed=1`. PATCH alt_text persists. `/admin/media.php` renders the new alt-text input + green `6v` badge. DELETE drops the asset row, the variants table rows, the variant files, and the variants directory.
+
+**Rollback**: revert the commit + `DROP TABLE media_variants;` and (SQLite 3.35+) `ALTER TABLE media_assets DROP COLUMN alt_text; … DROP COLUMN processing_error;`. v1 upload behaviour is restored automatically (upload still works, just doesn't generate variants). Variant files on disk become orphaned in `site/public/uploads/variants/`; manual cleanup if desired.

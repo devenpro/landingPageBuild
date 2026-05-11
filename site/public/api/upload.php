@@ -147,6 +147,20 @@ try {
     upload_fail(500, 'DB error: ' . $e->getMessage());
 }
 
+// v2 Stage 7: generate WebP + resized variants for images. Failure here
+// does not roll back the upload — the asset is still usable as-is, and
+// processing_error captures the message for the admin's "retry" button.
+$variants_meta = ['processed' => 0, 'count' => 0, 'error' => null];
+if ($kind === 'image') {
+    require_once __DIR__ . '/../../../core/lib/media/processor.php';
+    $result = media_process($id);
+    $variants_meta = [
+        'processed' => $result['ok'] ? 1 : 0,
+        'count'     => (int)$result['variants'],
+        'error'     => $result['error'],
+    ];
+}
+
 echo json_encode([
     'ok'            => true,
     'id'            => $id,
@@ -156,4 +170,5 @@ echo json_encode([
     'mime_type'     => $mime,
     'size_bytes'    => $size,
     'kind'          => $kind,
+    'variants'      => $variants_meta,
 ]);
