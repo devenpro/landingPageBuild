@@ -1,238 +1,378 @@
 <?php
-// site/public/admin/forms.php — waitlist inbox.
+// site/public/admin/forms.php — Forms hub + per-form editor (v2 Stage 6).
 //
-// Phase 14 round A: pagination, search, CSV export. Search matches
-// across full_name, email, phone, role, bottleneck (LIKE %q%, case
-// insensitive). Pagination defaults to 25 per page; pages are 1-indexed
-// in the URL so admins can share links. CSV export streams the matching
-// (search-filtered) rows directly — no buffering, no row cap — so the
-// admin can grab everything in one go.
+// Without ?form param: list every form with submission/webhook counts.
+// With ?form=<id>:    tabbed editor (Fields / Settings / Webhooks /
+//                     Submissions / Embed). Replaces the v1 single-form
+//                     waitlist inbox.
 
 declare(strict_types=1);
 
 require __DIR__ . '/../../../core/lib/bootstrap.php';
 require __DIR__ . '/_layout.php';
+require_once __DIR__ . '/../../../core/lib/forms.php';
+
 auth_require_login();
 
 $pdo = db();
+$forms = forms_all();
 
-const FORMS_PER_PAGE = 25;
-const FORMS_MAX_PAGE = 1000; // sanity bound; 1000 * 25 = 25k rows max via UI
+$active_id = (int)($_GET['form'] ?? 0);
+$active = $active_id > 0 ? form_by_id($active_id) : null;
 
-$q = trim((string) ($_GET['q'] ?? ''));
-$page = max(1, min(FORMS_MAX_PAGE, (int) ($_GET['page'] ?? 1)));
-$export = (string) ($_GET['export'] ?? '');
+$saved   = isset($_GET['saved']);
+$created = isset($_GET['created']);
+$error   = (string)($_GET['error'] ?? '');
 
-// Build the WHERE clause once; reused by count, list, and export.
-$where     = '';
-$where_par = [];
-if ($q !== '') {
-    $where = 'WHERE full_name LIKE :q OR email LIKE :q OR phone LIKE :q
-              OR role LIKE :q OR bottleneck LIKE :q';
-    $where_par[':q'] = '%' . $q . '%';
-}
+if ($active === null) {
+    // ============================================================ INDEX VIEW
+    admin_head('Forms', 'forms');
+    ?>
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-semibold tracking-tight text-ink-900">Forms</h1>
+                <p class="mt-2 text-ink-600">Multi-form CRUD. Each form has its own fields and outbound webhooks.</p>
+            </div>
+            <a href="#new-form" class="rounded-md border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">+ New form</a>
+        </div>
 
-// ---------------- CSV export -----------------------------------------------
+        <?php if ($saved): ?>
+            <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">Saved.</div>
+        <?php endif; ?>
+        <?php if ($created): ?>
+            <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">Form created.</div>
+        <?php endif; ?>
+        <?php if ($error !== ''): ?>
+            <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900"><?= e($error) ?></div>
+        <?php endif; ?>
 
-if ($export === 'csv') {
-    $sql = "SELECT id, full_name, email, phone, role, clients_managed, bottleneck,
-                   user_agent, referrer, ip_address, webhook_status, submitted_at
-            FROM form_submissions
-            $where
-            ORDER BY submitted_at DESC, id DESC";
-    $stmt = $pdo->prepare($sql);
-    foreach ($where_par as $k => $v) $stmt->bindValue($k, $v);
-    $stmt->execute();
+        <div class="mt-6 space-y-3">
+            <?php foreach ($forms as $f):
+                $count_subs = form_submission_count((int)$f['id']);
+                $webhooks   = form_webhooks((int)$f['id']);
+            ?>
+                <a href="?form=<?= (int)$f['id'] ?>" class="block rounded-xl border border-ink-100 bg-white p-4 transition hover:border-brand-200 hover:shadow-sm">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <div>
+                            <h2 class="text-base font-semibold text-ink-900"><?= e($f['name']) ?></h2>
+                            <div class="mt-0.5 text-xs text-ink-500">
+                                <code><?= e($f['slug']) ?></code>
+                                <?php if ((int)$f['is_builtin'] === 1): ?> · <span class="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-600">builtin</span><?php endif; ?>
+                                <?php if ($f['status'] !== 'active'): ?> · <span class="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink-500"><?= e($f['status']) ?></span><?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-ink-500">
+                            <span><?= $count_subs ?> submission<?= $count_subs === 1 ? '' : 's' ?></span>
+                            <?php if ($webhooks !== []): ?>
+                                <span>·</span>
+                                <span><?= count($webhooks) ?> webhook<?= count($webhooks) === 1 ? '' : 's' ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php if (!empty($f['description'])): ?>
+                        <p class="mt-2 text-sm text-ink-600"><?= e($f['description']) ?></p>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
 
-    // Filename includes UTC date + 'q' marker so multiple exports don't
-    // overwrite each other in the admin's downloads folder.
-    $stamp = gmdate('Ymd-His');
-    $tag   = $q !== '' ? '-search' : '';
-    $fname = "form-submissions{$tag}-{$stamp}.csv";
-
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $fname . '"');
-    header('Cache-Control: no-store');
-
-    $out = fopen('php://output', 'w');
-    // BOM so Excel opens UTF-8 correctly.
-    fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, [
-        'id', 'submitted_at_utc', 'full_name', 'email', 'phone', 'role',
-        'clients_managed', 'bottleneck', 'webhook_status',
-        'ip_address', 'referrer', 'user_agent',
-    ]);
-    while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        fputcsv($out, [
-            $r['id'], $r['submitted_at'], $r['full_name'], $r['email'],
-            $r['phone'], $r['role'], $r['clients_managed'] ?? '',
-            $r['bottleneck'] ?? '', $r['webhook_status'] ?? '',
-            $r['ip_address'] ?? '', $r['referrer'] ?? '', $r['user_agent'] ?? '',
-        ]);
-    }
-    fclose($out);
+        <details id="new-form" class="mt-6 rounded-xl border border-ink-100 bg-white p-4">
+            <summary class="cursor-pointer text-sm font-medium text-brand-700">+ Create a new form</summary>
+            <form method="post" action="/api/forms.php" class="mt-3 grid gap-3 sm:grid-cols-2">
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="action" value="create_form">
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="nf_slug">Slug</label>
+                    <input id="nf_slug" name="slug" type="text" required pattern="[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
+                           class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs">
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="nf_name">Name</label>
+                    <input id="nf_name" name="name" type="text" required
+                           class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="nf_desc">Description (optional)</label>
+                    <textarea id="nf_desc" name="description" rows="2" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="sm:col-span-2 text-right">
+                    <button type="submit" class="rounded-md border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Create</button>
+                </div>
+            </form>
+        </details>
+    <?php
+    admin_foot();
     exit;
 }
 
-// ---------------- Listing (paginated) --------------------------------------
+// ============================================================ EDITOR VIEW
+$tab = (string)($_GET['tab'] ?? 'fields');
+$fields_list = form_fields((int)$active['id']);
+$webhooks    = form_webhooks((int)$active['id']);
+$settings    = form_settings($active);
+$count_subs  = form_submission_count((int)$active['id']);
 
-$count_sql = "SELECT COUNT(*) FROM form_submissions $where";
-$cstmt = $pdo->prepare($count_sql);
-foreach ($where_par as $k => $v) $cstmt->bindValue($k, $v);
-$cstmt->execute();
-$matched = (int) $cstmt->fetchColumn();
-$total   = $q === '' ? $matched : (int) $pdo->query('SELECT COUNT(*) FROM form_submissions')->fetchColumn();
-
-$last_page = max(1, (int) ceil($matched / FORMS_PER_PAGE));
-if ($page > $last_page) $page = $last_page;
-$offset = ($page - 1) * FORMS_PER_PAGE;
-
-$list_sql = "SELECT id, full_name, email, phone, role, clients_managed, bottleneck,
-                    user_agent, referrer, ip_address, webhook_status, webhook_response,
-                    submitted_at
-             FROM form_submissions
-             $where
-             ORDER BY submitted_at DESC, id DESC
-             LIMIT :lim OFFSET :off";
-$stmt = $pdo->prepare($list_sql);
-foreach ($where_par as $k => $v) $stmt->bindValue($k, $v);
-$stmt->bindValue(':lim', FORMS_PER_PAGE, PDO::PARAM_INT);
-$stmt->bindValue(':off', $offset,         PDO::PARAM_INT);
-$stmt->execute();
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Helper to build URLs that preserve the current q while changing page/export.
-function forms_url(string $q, ?int $page, ?string $export = null): string
-{
-    $p = [];
-    if ($q !== '')         $p['q']      = $q;
-    if ($page !== null)    $p['page']   = $page;
-    if ($export !== null)  $p['export'] = $export;
-    return '/admin/forms.php' . ($p ? '?' . http_build_query($p) : '');
-}
-
-admin_head('Forms', 'forms');
+admin_head('Form: ' . $active['name'], 'forms');
 ?>
     <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 class="text-2xl font-semibold tracking-tight text-ink-900">Form submissions</h1>
-        <span class="text-sm text-ink-500">
-            <?php if ($q !== ''): ?>
-                <?= $matched ?> match<?= $matched === 1 ? '' : 'es' ?> for "<?= e($q) ?>" in <?= $total ?> total
-            <?php else: ?>
-                <?= $total ?> total
-            <?php endif; ?>
-        </span>
+        <div>
+            <a href="/admin/forms.php" class="text-xs text-ink-500 hover:text-ink-700">&larr; All forms</a>
+            <h1 class="mt-1 text-2xl font-semibold tracking-tight text-ink-900"><?= e($active['name']) ?></h1>
+            <div class="mt-1 text-xs text-ink-500">
+                <code><?= e($active['slug']) ?></code> · <?= e($active['status']) ?>
+                <?php if ((int)$active['is_builtin'] === 1): ?> · builtin<?php endif; ?>
+            </div>
+        </div>
+        <?php if ((int)$active['is_builtin'] !== 1): ?>
+            <form method="post" action="/api/forms.php" onsubmit="return confirm('Delete this form, its fields, webhooks, and all submissions?');">
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="action" value="delete_form">
+                <input type="hidden" name="id" value="<?= (int)$active['id'] ?>">
+                <button type="submit" class="text-xs text-rose-700 hover:text-rose-800">Delete form</button>
+            </form>
+        <?php endif; ?>
     </div>
-    <p class="mt-2 text-ink-600">Click a row to expand details. Export downloads the search-filtered set; no row cap.</p>
 
-    <form method="get" action="/admin/forms.php" class="mt-5 flex flex-wrap items-center gap-2">
-        <input type="search" name="q" value="<?= e($q) ?>"
-               placeholder="Search name, email, phone, role, bottleneck…"
-               aria-label="Search submissions"
-               class="w-72 max-w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500">
-        <button type="submit" class="rounded-lg bg-ink-900 px-3 py-2 text-sm font-medium text-white hover:bg-ink-800">Search</button>
-        <?php if ($q !== ''): ?>
-            <a href="/admin/forms.php" class="text-sm text-ink-500 hover:text-ink-800">Clear</a>
-        <?php endif; ?>
-        <a href="<?= e(forms_url($q, null, 'csv')) ?>"
-           class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-700 hover:border-brand-300 hover:bg-brand-50">
-            Export CSV<?= $q !== '' ? ' (filtered)' : '' ?>
-        </a>
-    </form>
-
-    <?php if ($rows === []): ?>
-        <div class="mt-8 rounded-2xl border border-dashed border-ink-200 bg-white/60 p-10 text-center">
-            <h2 class="text-base font-medium text-ink-700"><?= $q !== '' ? 'No matches' : 'No submissions yet' ?></h2>
-            <p class="mt-1 text-sm text-ink-500">
-                <?= $q !== ''
-                    ? 'Nothing matched <code>' . e($q) . '</code>. Try a different term or <a href="/admin/forms.php" class="underline">clear the search</a>.'
-                    : "When someone fills out the waitlist form on your site, they'll show up here." ?>
-            </p>
-        </div>
-    <?php else: ?>
-        <div class="mt-6 overflow-hidden rounded-2xl border border-ink-100 bg-white">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-ink-50/60 text-xs uppercase tracking-wider text-ink-500">
-                    <tr>
-                        <th class="px-4 py-3 font-medium">When</th>
-                        <th class="px-4 py-3 font-medium">Name</th>
-                        <th class="px-4 py-3 font-medium">Contact</th>
-                        <th class="px-4 py-3 font-medium">Role</th>
-                        <th class="px-4 py-3 font-medium">Clients</th>
-                        <th class="px-4 py-3 font-medium">Webhook</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-ink-100">
-                    <?php foreach ($rows as $r):
-                        $hook = $r['webhook_status'] ?? null;
-                        $hook_class = match ($hook) {
-                            'sent'    => 'bg-emerald-50 text-emerald-700',
-                            'queued'  => 'bg-amber-50 text-amber-700',
-                            'failed'  => 'bg-red-50 text-red-700',
-                            'skipped' => 'bg-ink-100 text-ink-500',
-                            default   => 'bg-ink-100 text-ink-500',
-                        };
-                    ?>
-                        <tr class="form-row align-top hover:bg-ink-50/40">
-                            <td class="px-4 py-3 text-ink-500 whitespace-nowrap"><?= e((string)$r['submitted_at']) ?></td>
-                            <td class="px-4 py-3 font-medium text-ink-900"><?= e($r['full_name']) ?></td>
-                            <td class="px-4 py-3 text-ink-700">
-                                <div><a href="mailto:<?= e($r['email']) ?>" class="hover:text-brand-700"><?= e($r['email']) ?></a></div>
-                                <div class="text-xs text-ink-500"><?= e($r['phone']) ?></div>
-                            </td>
-                            <td class="px-4 py-3 text-ink-700"><?= e($r['role']) ?></td>
-                            <td class="px-4 py-3 text-ink-700"><?= e((string)($r['clients_managed'] ?? '—')) ?></td>
-                            <td class="px-4 py-3">
-                                <span class="inline-block rounded-full px-2 py-0.5 text-xs font-medium <?= $hook_class ?>">
-                                    <?= e($hook ?? 'none') ?>
-                                </span>
-                            </td>
-                        </tr>
-                        <?php if (!empty($r['bottleneck']) || !empty($r['user_agent']) || !empty($r['ip_address'])): ?>
-                            <tr class="form-row-detail bg-ink-50/40">
-                                <td colspan="6" class="px-4 pb-4 pt-0">
-                                    <div class="rounded-lg border border-ink-100 bg-white p-3 text-xs">
-                                        <?php if (!empty($r['bottleneck'])): ?>
-                                            <div class="mb-2">
-                                                <div class="font-medium text-ink-700">Bottleneck</div>
-                                                <div class="mt-1 text-ink-600 whitespace-pre-wrap"><?= e($r['bottleneck']) ?></div>
-                                            </div>
-                                        <?php endif; ?>
-                                        <div class="grid gap-2 text-ink-500 sm:grid-cols-3">
-                                            <div><span class="text-ink-500">IP:</span> <?= e((string)($r['ip_address'] ?? '—')) ?></div>
-                                            <div><span class="text-ink-500">Referrer:</span> <?= e((string)($r['referrer'] ?? '—')) ?></div>
-                                            <div class="truncate" title="<?= e((string)($r['user_agent'] ?? '')) ?>"><span class="text-ink-500">UA:</span> <?= e((string)($r['user_agent'] ?? '—')) ?></div>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <?php if ($last_page > 1): ?>
-            <nav class="mt-5 flex items-center justify-between text-sm" aria-label="Pagination">
-                <span class="text-ink-500">
-                    Page <?= $page ?> of <?= $last_page ?>
-                    <span class="text-ink-500">·</span>
-                    Showing <?= $offset + 1 ?>–<?= min($offset + count($rows), $matched) ?> of <?= $matched ?>
-                </span>
-                <div class="flex items-center gap-1">
-                    <?php if ($page > 1): ?>
-                        <a href="<?= e(forms_url($q, $page - 1)) ?>" class="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-ink-700 hover:border-brand-300 hover:bg-brand-50">← Prev</a>
-                    <?php else: ?>
-                        <span class="rounded-md border border-ink-100 bg-ink-50 px-3 py-1.5 text-ink-500">← Prev</span>
-                    <?php endif; ?>
-                    <?php if ($page < $last_page): ?>
-                        <a href="<?= e(forms_url($q, $page + 1)) ?>" class="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-ink-700 hover:border-brand-300 hover:bg-brand-50">Next →</a>
-                    <?php else: ?>
-                        <span class="rounded-md border border-ink-100 bg-ink-50 px-3 py-1.5 text-ink-500">Next →</span>
-                    <?php endif; ?>
-                </div>
-            </nav>
-        <?php endif; ?>
+    <?php if ($saved): ?>
+        <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900">Saved.</div>
     <?php endif; ?>
+    <?php if ($error !== ''): ?>
+        <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900"><?= e($error) ?></div>
+    <?php endif; ?>
+
+    <nav class="mt-6 flex flex-wrap gap-1 border-b border-ink-100">
+        <?php foreach (['fields','settings','webhooks','submissions','embed'] as $t):
+            $is_active = $t === $tab;
+            $cls = 'whitespace-nowrap border-b-2 px-3 py-2 text-sm transition '
+                . ($is_active ? 'border-brand-600 font-medium text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-800');
+        ?>
+            <a href="?form=<?= (int)$active['id'] ?>&tab=<?= $t ?>" class="<?= $cls ?>"><?= ucfirst($t) ?><?php if ($t === 'submissions') echo ' (' . $count_subs . ')'; ?></a>
+        <?php endforeach; ?>
+    </nav>
+
+    <div class="mt-6">
+        <?php if ($tab === 'fields'): ?>
+            <p class="text-sm text-ink-500">Each row is one input on the public form. Lower position numbers render first.</p>
+            <div class="mt-4 space-y-3">
+                <?php foreach ($fields_list as $f): ?>
+                    <form method="post" action="/api/forms.php" class="rounded-lg border border-ink-100 bg-white p-3 space-y-2">
+                        <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="action" value="save_field">
+                        <input type="hidden" name="form_id" value="<?= (int)$active['id'] ?>">
+                        <input type="hidden" name="field_id" value="<?= (int)$f['id'] ?>">
+
+                        <div class="flex flex-wrap items-baseline justify-between gap-2">
+                            <code class="text-sm font-medium text-ink-900"><?= e($f['name']) ?></code>
+                            <span class="text-xs text-ink-500">position <?= (int)$f['position'] ?></span>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                            <input name="label" type="text" value="<?= e($f['label']) ?>" placeholder="Label" required class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                            <select name="type" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                                <?php foreach (['text','email','phone','textarea','select','radio','checkbox','file','hidden','url','number','date'] as $t): ?>
+                                    <option value="<?= $t ?>" <?= $f['type'] === $t ? 'selected' : '' ?>><?= $t ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input name="placeholder" type="text" value="<?= e((string)($f['placeholder'] ?? '')) ?>" placeholder="Placeholder" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                            <input name="position" type="number" value="<?= (int)$f['position'] ?>" class="rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs">
+                        </div>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <input name="default_value" type="text" value="<?= e((string)($f['default_value'] ?? '')) ?>" placeholder="Default value" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                            <input name="help_text" type="text" value="<?= e((string)($f['help_text'] ?? '')) ?>" placeholder="Help text" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                        </div>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            <label class="inline-flex items-center gap-2 text-sm text-ink-700">
+                                <input type="checkbox" name="required" value="1" <?= (int)$f['required'] === 1 ? 'checked' : '' ?>>
+                                Required
+                            </label>
+                            <input name="options_json" type="text" value="<?= e((string)($f['options_json'] ?? '')) ?>" placeholder='Options JSON, e.g. ["a","b"]' class="rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs sm:col-span-2">
+                        </div>
+                        <input name="validation_json" type="text" value="<?= e((string)($f['validation_json'] ?? '')) ?>" placeholder='Validation JSON, e.g. {"max_length":100}' class="w-full rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs">
+
+                        <div class="flex items-center justify-between gap-2">
+                            <button type="submit" class="rounded-md border border-brand-600 bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">Save field</button>
+                            <button type="submit" name="action" value="delete_field" onclick="return confirm('Delete this field?');" class="text-xs text-rose-700 hover:text-rose-800">Delete field</button>
+                        </div>
+                    </form>
+                <?php endforeach; ?>
+            </div>
+
+            <details class="mt-4 rounded-xl border border-ink-100 bg-white p-4">
+                <summary class="cursor-pointer text-sm font-medium text-brand-700">+ Add field</summary>
+                <form method="post" action="/api/forms.php" class="mt-3 grid gap-2 sm:grid-cols-3">
+                    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="add_field">
+                    <input type="hidden" name="form_id" value="<?= (int)$active['id'] ?>">
+                    <input name="name" type="text" required pattern="[a-z_][a-z0-9_]*" placeholder="name (snake_case)" class="rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs">
+                    <input name="label" type="text" required placeholder="Label" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                    <select name="type" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                        <?php foreach (['text','email','phone','textarea','select','radio','checkbox','file','hidden','url','number','date'] as $t): ?>
+                            <option value="<?= $t ?>"><?= $t ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="sm:col-span-3 text-right">
+                        <button type="submit" class="rounded-md border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Add field</button>
+                    </div>
+                </form>
+            </details>
+
+        <?php elseif ($tab === 'settings'): ?>
+            <form method="post" action="/api/forms.php" class="space-y-3 max-w-2xl">
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="action" value="save_settings">
+                <input type="hidden" name="id" value="<?= (int)$active['id'] ?>">
+
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_name">Name</label>
+                    <input id="fs_name" name="name" type="text" value="<?= e($active['name']) ?>" required class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_desc">Description</label>
+                    <textarea id="fs_desc" name="description" rows="2" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm"><?= e((string)($active['description'] ?? '')) ?></textarea>
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_status">Status</label>
+                        <select id="fs_status" name="status" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                            <?php foreach (['active','draft','archived'] as $s): ?>
+                                <option value="<?= $s ?>" <?= $active['status'] === $s ? 'selected' : '' ?>><?= $s ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_honeypot">Honeypot field name</label>
+                        <input id="fs_honeypot" name="honeypot" type="text" value="<?= e((string)($settings['honeypot'] ?? 'website')) ?>" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_succ_h">Success heading</label>
+                    <input id="fs_succ_h" name="success_heading" type="text" value="<?= e((string)($settings['success_heading'] ?? '')) ?>" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_succ_b">Success body</label>
+                    <textarea id="fs_succ_b" name="success_body" rows="2" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm"><?= e((string)($settings['success_body'] ?? '')) ?></textarea>
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_redir">Success redirect URL</label>
+                        <input id="fs_redir" name="redirect_url" type="text" value="<?= e((string)($settings['redirect_url'] ?? '')) ?>" placeholder="(optional)" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium uppercase tracking-wider text-ink-500" for="fs_notif">Notification email</label>
+                        <input id="fs_notif" name="notification_email" type="email" value="<?= e((string)($settings['notification_email'] ?? '')) ?>" placeholder="(optional)" class="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="text-right">
+                    <button type="submit" class="rounded-md border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Save settings</button>
+                </div>
+            </form>
+
+        <?php elseif ($tab === 'webhooks'): ?>
+            <p class="text-sm text-ink-500">Each enabled webhook is fired on every submission. Payload templates support <code>{{field_name}}</code> and <code>{{meta.submitted_at}}</code> placeholders.</p>
+            <div class="mt-4 space-y-3">
+                <?php foreach ($webhooks as $wh): ?>
+                    <form method="post" action="/api/forms.php" class="rounded-lg border border-ink-100 bg-white p-3 space-y-2">
+                        <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="action" value="save_webhook">
+                        <input type="hidden" name="form_id" value="<?= (int)$active['id'] ?>">
+                        <input type="hidden" name="webhook_id" value="<?= (int)$wh['id'] ?>">
+
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <input name="name" type="text" value="<?= e($wh['name']) ?>" placeholder="Name" required class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                            <input name="url" type="url" value="<?= e($wh['url']) ?>" placeholder="https://..." required class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                        </div>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            <select name="method" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                                <?php foreach (['POST','PUT','PATCH'] as $m): ?>
+                                    <option value="<?= $m ?>" <?= $wh['method'] === $m ? 'selected' : '' ?>><?= $m ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input name="signing_secret" type="text" value="<?= e((string)($wh['signing_secret'] ?? '')) ?>" placeholder="Signing secret (optional)" class="rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs sm:col-span-2">
+                        </div>
+                        <textarea name="headers_json" rows="2" placeholder='Extra headers JSON, e.g. {"Authorization":"Bearer ..."}' class="w-full rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs"><?= e((string)($wh['headers_json'] ?? '')) ?></textarea>
+                        <textarea name="payload_template_json" rows="3" placeholder='Payload template (JSON). Use {{field_name}} placeholders.' class="w-full rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-xs"><?= e((string)($wh['payload_template_json'] ?? '')) ?></textarea>
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="inline-flex items-center gap-2 text-sm text-ink-700">
+                                <input type="checkbox" name="enabled" value="1" <?= (int)$wh['enabled'] === 1 ? 'checked' : '' ?>>
+                                Enabled
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <button type="submit" class="rounded-md border border-brand-600 bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">Save</button>
+                                <button type="submit" name="action" value="delete_webhook" onclick="return confirm('Delete this webhook?');" class="text-xs text-rose-700 hover:text-rose-800">Delete</button>
+                            </div>
+                        </div>
+                    </form>
+                <?php endforeach; ?>
+            </div>
+            <details class="mt-4 rounded-xl border border-ink-100 bg-white p-4">
+                <summary class="cursor-pointer text-sm font-medium text-brand-700">+ Add webhook</summary>
+                <form method="post" action="/api/forms.php" class="mt-3 grid gap-2 sm:grid-cols-2">
+                    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                    <input type="hidden" name="action" value="add_webhook">
+                    <input type="hidden" name="form_id" value="<?= (int)$active['id'] ?>">
+                    <input name="name" type="text" required placeholder="Name" class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                    <input name="url" type="url" required placeholder="https://..." class="rounded-md border border-ink-200 bg-white px-3 py-2 text-sm">
+                    <div class="sm:col-span-2 text-right">
+                        <button type="submit" class="rounded-md border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Add webhook</button>
+                    </div>
+                </form>
+            </details>
+
+        <?php elseif ($tab === 'submissions'): ?>
+            <?php
+            $stmt = $pdo->prepare(
+                'SELECT id, data_json, full_name, email, webhook_status, submitted_at, ip_address
+                   FROM form_submissions WHERE form_id = :f ORDER BY submitted_at DESC LIMIT 100'
+            );
+            $stmt->execute([':f' => (int)$active['id']]);
+            $subs = $stmt->fetchAll();
+            ?>
+            <p class="text-sm text-ink-500">Most recent <?= count($subs) ?> of <?= $count_subs ?> submissions.</p>
+            <?php if ($subs === []): ?>
+                <p class="mt-4 text-sm text-ink-500">No submissions yet.</p>
+            <?php else: ?>
+                <div class="mt-4 overflow-x-auto rounded-xl border border-ink-100 bg-white">
+                    <table class="w-full text-sm">
+                        <thead class="border-b border-ink-100 bg-ink-50/50 text-left text-xs uppercase tracking-wider text-ink-500">
+                            <tr>
+                                <th class="px-3 py-2">When</th>
+                                <th class="px-3 py-2">Data</th>
+                                <th class="px-3 py-2">Webhook</th>
+                                <th class="px-3 py-2">IP</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-ink-100">
+                            <?php foreach ($subs as $s):
+                                $data = $s['data_json'] ? json_decode($s['data_json'], true) : [];
+                                if (!is_array($data)) $data = [];
+                                $preview = $data['full_name'] ?? ($data['email'] ?? ($data['name'] ?? '(no data)'));
+                            ?>
+                                <tr>
+                                    <td class="px-3 py-2 text-xs text-ink-500 whitespace-nowrap"><?= e($s['submitted_at']) ?></td>
+                                    <td class="px-3 py-2">
+                                        <div class="font-medium text-ink-900"><?= e((string)$preview) ?></div>
+                                        <?php if (!empty($data['email']) && $preview !== $data['email']): ?>
+                                            <div class="text-xs text-ink-500"><?= e((string)$data['email']) ?></div>
+                                        <?php endif; ?>
+                                        <details class="mt-1 text-xs text-ink-500">
+                                            <summary class="cursor-pointer">Full data</summary>
+                                            <pre class="mt-1 max-h-48 overflow-auto rounded border border-ink-100 bg-ink-50 p-2 font-mono text-[11px]"><?= e(json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) ?></pre>
+                                        </details>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs"><?= e((string)($s['webhook_status'] ?? '—')) ?></td>
+                                    <td class="px-3 py-2 text-xs text-ink-500"><?= e((string)($s['ip_address'] ?? '')) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+
+        <?php elseif ($tab === 'embed'): ?>
+            <p class="text-sm text-ink-500">Drop this snippet into a page (or a section partial) to render the form.</p>
+            <pre class="mt-4 overflow-x-auto rounded-xl border border-ink-100 bg-ink-900 p-4 font-mono text-xs text-emerald-50">&lt;?php require_once GUA_CORE_PATH . '/lib/forms.php'; ?&gt;
+&lt;?= form_render('<?= e($active['slug']) ?>') ?&gt;</pre>
+            <p class="mt-4 text-sm text-ink-500">Or post directly: <code>POST /api/form.php?form=<?= e($active['slug']) ?></code></p>
+        <?php endif; ?>
+    </div>
 <?php
 admin_foot();

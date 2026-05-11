@@ -17,9 +17,17 @@ auth_require_login();
 
 $pdo = db();
 $rows = $pdo->query(
-    'SELECT id, filename, original_name, mime_type, size_bytes, kind, uploaded_at
+    'SELECT id, filename, original_name, mime_type, size_bytes, kind, uploaded_at,
+            alt_text, caption, original_width, original_height,
+            processed, processing_error
      FROM media_assets ORDER BY uploaded_at DESC, id DESC LIMIT 200'
 )->fetchAll(PDO::FETCH_ASSOC);
+
+// v2 Stage 7: pre-fetch variant counts so the cards can show a badge.
+$variant_counts = [];
+foreach ($pdo->query('SELECT media_id, COUNT(*) AS n FROM media_variants GROUP BY media_id') as $vc) {
+    $variant_counts[(int)$vc['media_id']] = (int)$vc['n'];
+}
 
 $total = (int) $pdo->query('SELECT COUNT(*) FROM media_assets')->fetchColumn();
 
@@ -92,7 +100,27 @@ admin_head('Media', 'media');
                         <div class="truncate font-medium text-ink-800" title="<?= e((string)$r['original_name']) ?>"><?= e((string)$r['original_name']) ?></div>
                         <div class="flex items-center justify-between text-ink-500">
                             <span><?= e(media_format_bytes((int)$r['size_bytes'])) ?> · <?= e((string)$r['mime_type']) ?></span>
+                            <?php
+                            $vc = $variant_counts[(int)$r['id']] ?? 0;
+                            if ($r['kind'] === 'image'):
+                                if ((int)$r['processed'] === 1 && $vc > 0):
+                            ?>
+                                <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-800"><?= $vc ?>v</span>
+                            <?php   elseif (!empty($r['processing_error'])): ?>
+                                <span class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-rose-800" title="<?= e((string)$r['processing_error']) ?>">err</span>
+                            <?php   else: ?>
+                                <span class="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-500">raw</span>
+                            <?php   endif;
+                            endif; ?>
                         </div>
+                        <?php if (!empty($r['original_width'])): ?>
+                            <div class="text-ink-500"><?= (int)$r['original_width'] ?> × <?= (int)$r['original_height'] ?></div>
+                        <?php endif; ?>
+                        <?php if ($r['kind'] === 'image'): ?>
+                            <input type="text" class="media-alt mt-1 w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs"
+                                   placeholder="Alt text" value="<?= e((string)($r['alt_text'] ?? '')) ?>"
+                                   aria-label="Alt text for <?= e((string)$r['original_name']) ?>">
+                        <?php endif; ?>
                         <div class="flex items-center gap-1 pt-1">
                             <button type="button" class="media-copy rounded-md border border-ink-200 bg-white px-2 py-1 text-[11px] text-ink-700 hover:border-brand-300 hover:bg-brand-50">Copy URL</button>
                             <a href="<?= e($url) ?>" target="_blank" rel="noopener" class="rounded-md border border-ink-200 bg-white px-2 py-1 text-[11px] text-ink-700 hover:border-brand-300 hover:bg-brand-50">Open</a>
@@ -178,6 +206,25 @@ admin_head('Media', 'media');
                     catch (_) { toast('Copy failed', 'err'); }
                     finally { ta.remove(); }
                 }
+            });
+        });
+
+        // ---- Alt text inline save (debounced on blur) ----
+        document.querySelectorAll('.media-alt').forEach((input) => {
+            input.addEventListener('blur', async () => {
+                const card = input.closest('.media-card');
+                const id = card?.getAttribute('data-id');
+                if (!id) return;
+                try {
+                    const res = await fetch('/api/media.php?_method=PATCH', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ id: Number(id), alt_text: input.value }),
+                    });
+                    if (res.ok) toast('Saved alt', 'ok');
+                    else toast('Save failed', 'err');
+                } catch (_) { toast('Network error', 'err'); }
             });
         });
 

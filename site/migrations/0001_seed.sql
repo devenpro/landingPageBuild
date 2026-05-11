@@ -5,7 +5,7 @@
 -- =========================================================================
 -- SEO
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('seo.title', 'Go Ultra AI — content for every client, in a fraction of the time', 'seo'),
   ('seo.description', 'AI-powered content strategy and production for freelancers and small agencies. Plan calendars, generate prompts, and ship posts across multiple clients without losing the thinking that makes content actually good.', 'seo'),
   ('seo.og_image', '/og-image.jpg', 'seo')
@@ -14,7 +14,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Navbar
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('nav.brand', 'Go Ultra AI', 'text'),
   ('nav.features_label', 'Features', 'text'),
   ('nav.how_label', 'How it works', 'text'),
@@ -25,7 +25,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Hero
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('hero.eyebrow', 'For freelancers, solo marketers & small agencies', 'text'),
   ('hero.headline', 'Plan a week of social content for every client. In an hour.', 'text'),
   ('hero.subheadline', 'Go Ultra AI is the brain behind your social calendar — content pillars, post ideas, image and video prompts, captions, and ready-to-handoff briefs across every brand you manage. Without losing the thinking that makes content actually good.', 'text'),
@@ -38,14 +38,14 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Social proof
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('social_proof.text', 'Built by the team behind CreatiSoul — production partner to brands across India', 'text')
 ON CONFLICT(key) DO NOTHING;
 
 -- =========================================================================
 -- Features (5 cards)
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('features.heading', 'Everything you need to run social content for many clients', 'text'),
   ('features.subheading', 'Stop juggling sheets, Notion docs, and ten different AI tabs. One workspace, every client, every step.', 'text'),
 
@@ -77,7 +77,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- How it works (4 steps)
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('how.heading', 'Set up once. Ship every week.', 'text'),
   ('how.subheading', 'Four steps from blank calendar to client-ready brief.', 'text'),
 
@@ -101,7 +101,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Use cases
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('use_cases.heading', 'Built for the way you actually work', 'text'),
 
   ('use_case.1.icon', 'user', 'icon'),
@@ -120,7 +120,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Product demo
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('demo.heading', 'See it in action', 'text'),
   ('demo.subheading', 'A 30-second look at how a week of multi-client content gets planned, prompted, and packaged.', 'text'),
   ('demo.image', '/assets/placeholders/demo-placeholder.svg', 'image'),
@@ -130,7 +130,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- FAQ
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('faq.heading', 'Questions you''re probably asking', 'text'),
 
   ('faq.1.q', 'Is this just another ChatGPT wrapper?', 'text'),
@@ -155,7 +155,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Final CTA
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('final_cta.heading', 'Get on the early-access list', 'text'),
   ('final_cta.subheading', 'A small batch of freelancers and agencies are getting in first. Tell us a bit about how you work and we''ll be in touch.', 'text')
 ON CONFLICT(key) DO NOTHING;
@@ -163,7 +163,7 @@ ON CONFLICT(key) DO NOTHING;
 -- =========================================================================
 -- Footer
 -- =========================================================================
-INSERT INTO content_blocks (key, value, type) VALUES
+INSERT INTO legacy_content (key, value, type) VALUES
   ('footer.tagline', 'Plan, prompt, and ship social content for every client.', 'text'),
   ('footer.parent_company', 'A CreatiSoul LLP product', 'text'),
   ('footer.copyright', '© 2026 CreatiSoul LLP. All rights reserved.', 'text'),
