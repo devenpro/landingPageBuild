@@ -77,7 +77,13 @@ $general = settings_all_in_group('general');
 $assert('general group has 5 settings', 5, count($general));
 
 $groups = settings_groups();
-$assert('groups returned in seed order', ['general','ai','webhooks','media'], $groups);
+// Later stages add new groups (setup in Stage 10, ...) — only assert that
+// the v1 four appear in seed order, ignoring anything appended after.
+$v1_groups = ['general', 'ai', 'webhooks', 'media'];
+$assert('v1 groups returned in seed order',
+    $v1_groups,
+    array_values(array_intersect($groups, $v1_groups))
+);
 
 // 9. Reset modified settings to clean state
 settings_set('webhook_timeout_seconds', null);

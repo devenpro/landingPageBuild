@@ -214,7 +214,7 @@ Legend: ✅ merged · 🟡 PR open, awaiting merge · ⏸️ closed/superseded �
 | 7 | Media v2 (resize/WebP variants) | ✅ | merged into `main` via [#32](https://github.com/devenpro/landingPageBuild/pull/32) | 1.7.0 |
 | 8 | AI providers v2 (Grok / Anthropic / OpenAI + live model fetch) | 🚧 | `claude/pending-phases-VRtWd` | 1.8.0 |
 | 9 | Front-end canvas polish | 🚧 | `claude/pending-phases-VRtWd` | 1.9.0 |
-| 10 | Site Bootstrap | ⏳ | — | 2.0.0 |
+| 10 | Site Bootstrap | 🚧 | `claude/pending-phases-VRtWd` | 2.0.0 |
 
 ### v2 Stage 0 — Framing cleanup 🟡 ([#23](https://github.com/devenpro/landingPageBuild/pull/23))
 
@@ -556,3 +556,38 @@ v1's inline editor (Phase 9) was field-only: every `[data-edit]` element became 
 - Live browser verification (drag-to-reorder, palette open/close, mobile reveal timing) is manual and noted in the commit description.
 
 **Rollback**: revert the commit. No schema change, so no DB rollback needed. `site/public/api/sections.php` and `reveal.js` become unreachable; the marker wrapper in `render_data_driven_page()` reverts to a plain `require`. The editor falls back to v1's field-only UX.
+
+### v2 Stage 10 — Site Bootstrap 🚧 (`claude/pending-phases-VRtWd`)
+
+The v2 capstone. Stages 1-9 built the engine (settings, brand library, content types, taxonomy, forms, media v2, AI providers v2, canvas polish); Stage 10 ties them together into a guided 5-step wizard that walks an admin through everything a fresh clone needs before public traffic. Bumps `core/VERSION` to `2.0.0`.
+
+**Schema** (`core/migrations/0014_bootstrap.sql`)
+- 2 new `site_settings` rows under the new `setup` group: `bootstrap_completed` (boolean, defaults to `'0'`) and `bootstrap_started_at` (string, UTC timestamp recorded the first time the wizard is opened).
+
+**API** (`site/public/api/bootstrap.php`)
+- Admin-only, CSRF-protected. Four POST actions:
+  - `save_identity` — validates and persists `site_name` (required), `app_url` (must be http/https), `admin_email` (must be a valid email) via `settings_set()`.
+  - `mark_seen` — stamps `bootstrap_started_at` on first visit if still empty (the wizard page itself also stamps it on render so this is a redundancy for the JSON path).
+  - `brand_fill` — the AI heavy-lifter. Takes a `brief` (≥ 30 chars). For every row in a required brand category with an empty body, calls `ai_chat($default_provider, brand_item_generate_messages(...))`, parses the JSON response with `ai_parse_json()`, and updates the item via `brand_item_update()` with `source='ai', ai_reviewed=0` so the admin reviews it on `/admin/brand.php` before it leaks into downstream prompts. Each item's `source_meta` captures provider, model, token counts, and the first 200 chars of the brief for audit. Returns `{ok, attempted, filled: [...], errors: [...]}`. 409 if no key on file for the default provider; per-item errors don't abort the batch.
+  - `complete` — flips `bootstrap_completed` to `'1'`.
+
+**Wizard** (`site/public/admin/bootstrap.php`)
+- Six server-rendered steps gated by `?step=N` URL param (so individual steps are bookmarkable):
+  1. **Welcome** — shows brand score, default-provider key status, published-pages count, completion state. Links into step 2.
+  2. **Identity** — three-field form (site_name / app_url / admin_email). Submits via fetch → `save_identity` → redirects to step 3 on success.
+  3. **AI key** — read-only gate. If a key for the default provider exists, shows a green confirmation and the Continue button. Otherwise nudges the admin to `/admin/ai-keys.php` with a Skip option (the next steps degrade gracefully).
+  4. **Brand fill** — textarea for the brief + a precomputed list of which required categories will be filled. Submit shows a "Generating drafts" banner, then surfaces the success/error count and updates the button to "Continue → step 5".
+  5. **Initial pages** — current page count + a link to `/admin/ai.php` (the existing Phase 11 page-generation tool). Avoids re-implementing a generator UI.
+  6. **Done** — single "Mark bootstrap complete" button that hits `complete` and redirects to the dashboard.
+- A breadcrumb-style step indicator at the top lets the admin jump backward to any earlier step without losing state (all the heavy lifting is server-side).
+- Auto-stamps `bootstrap_started_at` on first GET so cron / telemetry can ask "how long ago did this site start being bootstrapped?".
+
+**Dashboard banner** (`site/public/admin/dashboard.php`)
+- When `settings_get('bootstrap_completed', false)` is false, a brand-coloured CTA banner sits between the welcome heading and the stats cards, deep-linking to `/admin/bootstrap.php`. Disappears once the flag flips so the dashboard stays clean for ongoing operators.
+
+**Verification**
+- `core/scripts/test_stage_10.php` — 25 assertions: setup-group settings seeded, value round-trip via `settings_set()`, API endpoint defines all four action verbs + CSRF + auth gates, wizard exposes all six step labels + uses `auth_require_login`, dashboard reads `bootstrap_completed` and renders the gated banner, `brand_audit()` returns the expected shape, and `brand_item_generate_messages()` builds the 2-message system+user payload with the brief embedded. All pass.
+- Stages 1/7/8/9 still pass (no regressions).
+- Live AI brand-fill behaviour (network call → JSON parse → item update with source='ai') is manual: requires a real key for the default provider and a meaningful brief. The error path (no key) is exercised by the smoke test indirectly via the audit/keys gate.
+
+**Rollback**: revert the commit and `DELETE FROM site_settings WHERE key IN ('bootstrap_completed','bootstrap_started_at');`. `site/public/admin/bootstrap.php` + `site/public/api/bootstrap.php` become unreachable but harmless. The dashboard banner gate evaluates to `false` after the rows disappear (`settings_get` falls through to the hard `false` default), so the dashboard stays clean. Stored brand items with `source='ai'` from previous wizard runs are left in place; they're already reviewed-or-not via the standard Brand UI.
