@@ -56,9 +56,10 @@ foreach (['content_types', 'content_entries'] as $t) {
     $assert("table $t exists", true, $exists);
 }
 
-// 2. Seed
+// 2. Seed — Stage 4 ships 3 types; Stage 5 added Location Services, so on a
+// fresh install all 4 are present. Either is acceptable for this assertion.
 $types = content_types_all();
-$assert('3 built-in types seeded', 3, count($types));
+$assert_true('at least 3 built-in types seeded', count($types) >= 3);
 $by_slug = [];
 foreach ($types as $t) $by_slug[$t['slug']] = $t;
 $assert_true('testimonials exists', isset($by_slug['testimonials']));
