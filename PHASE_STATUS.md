@@ -171,17 +171,18 @@ Phases 3-9 (plus 7.5 docs) were consolidated and landed into `main` via PR [#11]
 
 ### Phase 14 — Polish 🚧 (in flight)
 
-- Hand-built `styles.css` replacing Tailwind Play CDN
-- JSON-LD `Organization`/`WebSite`/`Product`
-- Sitemap.xml regenerated from `pages` table
-- `prefers-reduced-motion` overrides
-- WCAG AA pass
-- Lighthouse ≥ 95 mobile
-- CSV export of form submissions
-- Pagination + search on Forms inbox
-- No-JS HTML success page for the waitlist form
-- Webhook retry queue for transient failures
-- Per-IP rate limiting on form POST
+Shipped so far:
+
+- ✅ Round A ([#17](https://github.com/devenpro/landingPageBuild/pull/17)) — JSON-LD `Organization` + `WebSite`, dynamic `/sitemap.xml` from the `pages` table, CSV export + pagination + search on the Forms inbox
+- ✅ Round B (this branch) — per-IP rate limit on `POST /api/form.php` (5/hr default, configurable via `FORM_RATE_PER_IP_*`), no-JS HTML success/error/rate-limit page for plain form POSTs, `prefers-reduced-motion` honoured by JS-driven smooth scrolls
+
+Still to land:
+
+- Hand-built `styles.css` replacing Tailwind Play CDN (Round C)
+- JSON-LD `Product` (needs CMS field support)
+- WCAG AA pass (Round C)
+- Lighthouse ≥ 95 mobile (Round D)
+- Webhook retry queue for transient failures (Round D)
 
 ### Phase 15 — Launch
 
