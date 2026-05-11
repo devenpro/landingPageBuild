@@ -22,7 +22,7 @@ function admin_nav_items(): array
         ['slug' => 'media',     'label' => 'Media',     'href' => '/admin/media.php',     'live' => true],
         ['slug' => 'ai_keys',   'label' => 'AI keys',   'href' => '/admin/ai-keys.php',   'live' => true],
         ['slug' => 'ai_tools',  'label' => 'AI tools',  'href' => '/admin/ai.php',        'live' => true],
-        ['slug' => 'settings',  'label' => 'Settings',  'href' => '#',                    'live' => false, 'phase' => 10],
+        ['slug' => 'settings',  'label' => 'Settings',  'href' => '/admin/settings.php', 'live' => true],
     ];
 }
 
