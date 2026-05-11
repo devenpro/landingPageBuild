@@ -38,7 +38,10 @@ echo "------------------\n";
 // 1. Schema present
 $pdo = db();
 $count = (int) $pdo->query('SELECT COUNT(*) FROM site_settings')->fetchColumn();
-$assert('seed: 13 metadata rows', 13, $count);
+// Stage 1 seeded 13 rows; later stages (7+) add more (media_preset_widths,
+// media_webp_*, media_jpeg_quality). Accept "at least 13" so the assertion
+// stays stable as new settings are added.
+$assert('seed: at least 13 metadata rows', true, $count >= 13);
 
 // 2. Resolution chain — site_name comes from .env (SITE_NAME)
 $assert('site_name source defaults to env', 'env', settings_source('site_name'));
