@@ -79,7 +79,12 @@
                 form.hidden = true;
                 if (successBox) {
                     successBox.hidden = false;
-                    successBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const reduceMotion = window.matchMedia
+                        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    successBox.scrollIntoView({
+                        behavior: reduceMotion ? 'auto' : 'smooth',
+                        block: 'center',
+                    });
                 }
                 return;
             }
